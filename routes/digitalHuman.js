@@ -1519,9 +1519,15 @@ router.post('/digital-human/create', async (req, res) => {
 
     // 3. 验证图片
     if (!imageUrl || (typeof imageUrl === 'string' && imageUrl.trim().length === 0)) {
+      console.error('图片验证失败:', { 
+        hasImageUrl: !!imageUrl, 
+        imageUrlType: typeof imageUrl,
+        imageUrlLength: imageUrl ? imageUrl.length : 0,
+        imageUrlPreview: imageUrl ? imageUrl.substring(0, 50) : '无'
+      });
       return res.status(400).json({ 
         success: false, 
-        message: '请提供数字人头像图片地址 (imageUrl)' 
+        message: '❌ 缺少必需参数：数字人头像图片\n\n请确保：\n1. 在步骤2中上传了数字人头像图片\n2. 图片格式正确（.jpg/.jpeg/.png）\n3. 图片大小不超过10MB\n4. 图片尺寸至少300px' 
       });
     }
 
@@ -1533,29 +1539,78 @@ router.post('/digital-human/create', async (req, res) => {
       const hasValidAudioId = audioId && String(audioId).trim().length > 0;
       const hasValidAudioFile = audioFile && String(audioFile).trim().length > 0;
       
+      console.log('音频验证:', {
+        hasAudioId: hasValidAudioId,
+        audioId: audioId ? String(audioId).substring(0, 20) + '...' : '无',
+        hasAudioFile: hasValidAudioFile,
+        audioFileLength: audioFile ? String(audioFile).length : 0,
+        audioFilePreview: audioFile ? String(audioFile).substring(0, 50) + '...' : '无'
+      });
+      
       if (!hasValidAudioId && !hasValidAudioFile) {
+        console.error('音频验证失败: 未提供音频');
         return res.status(400).json({
           success: false,
-          message: '云雾数字人必须提供音频(audioId或audioFile)',
+          message: '❌ 缺少必需参数：音频文件\n\n云雾数字人必须提供音频，请：\n1. 在步骤2中上传音频文件（.mp3/.wav/.m4a/.aac）\n2. 或使用实时录制功能录制音频\n3. 音频时长：2-60秒\n4. 音频大小：≤5MB',
         });
       }
       
       if (hasValidAudioId && hasValidAudioFile) {
+        console.error('音频验证失败: 同时提供了audioId和audioFile');
         return res.status(400).json({
           success: false,
-          message: 'audioId 和 audioFile 只能二选一',
+          message: '❌ 参数冲突：audioId 和 audioFile 只能二选一\n\n请只提供以下之一：\n1. audioId（音频ID）\n2. audioFile（音频文件Base64）',
         });
       }
 
       // 准备云雾API请求体
       // ✅ 安全处理imageUrl（防止undefined/null错误）
-      const safeImageUrl = typeof imageUrl === 'string' ? imageUrl.trim() : String(imageUrl || '').trim();
+      let safeImageUrl = typeof imageUrl === 'string' ? imageUrl.trim() : String(imageUrl || '').trim();
+      
+      // 如果前端传入了 data URL 格式（data:image/...;base64,...），提取纯 base64 部分
+      if (safeImageUrl.startsWith('data:')) {
+        const commaIndex = safeImageUrl.indexOf(',');
+        if (commaIndex >= 0) {
+          safeImageUrl = safeImageUrl.substring(commaIndex + 1);
+          console.log('从 data URL 提取图片 base64，原始长度:', imageUrl.length, '提取后长度:', safeImageUrl.length);
+        }
+      }
       
       if (!safeImageUrl || safeImageUrl.length === 0) {
+        console.error('图片 base64 为空');
         return res.status(400).json({
           success: false,
-          message: '图片地址(imageUrl)不能为空'
+          message: '❌ 图片格式错误\n\n图片 base64 编码为空，请重新上传图片文件。'
         });
+      }
+      
+      // 处理音频文件：如果前端传入了 data URL 格式，提取纯 base64 部分
+      let finalAudioFile = '';
+      if (hasValidAudioFile) {
+        let rawAudioFile = typeof audioFile === 'string' ? audioFile.trim() : String(audioFile || '').trim();
+        
+        // 如果前端传入了 data URL 格式（data:audio/...;base64,...），提取纯 base64 部分
+        if (rawAudioFile.startsWith('data:')) {
+          const commaIndex = rawAudioFile.indexOf(',');
+          if (commaIndex >= 0) {
+            finalAudioFile = rawAudioFile.substring(commaIndex + 1);
+            console.log('从 data URL 提取音频 base64，原始长度:', rawAudioFile.length, '提取后长度:', finalAudioFile.length);
+          } else {
+            finalAudioFile = rawAudioFile;
+          }
+        } else {
+          // 已经是纯 base64，直接使用
+          finalAudioFile = rawAudioFile;
+        }
+        
+        // 验证 base64 格式
+        if (!finalAudioFile || finalAudioFile.trim().length === 0) {
+          console.error('音频文件 base64 为空');
+          return res.status(400).json({
+            success: false,
+            message: '❌ 音频文件格式错误\n\n音频文件 base64 编码为空，请重新上传音频文件。'
+          });
+        }
       }
       
       const requestBody = {
@@ -1564,7 +1619,7 @@ router.post('/digital-human/create', async (req, res) => {
         
         // 音频参数（二选一）
         ...(hasValidAudioId ? { audio_id: String(audioId || '').trim() } : {}),
-        ...(hasValidAudioFile ? { sound_file: typeof audioFile === 'string' ? audioFile.trim() : String(audioFile || '').trim() } : {}),
+        ...(hasValidAudioFile ? { sound_file: finalAudioFile } : {}),
         
         // 其他必需参数
         prompt: prompt || text || '', // 使用传入的prompt或text

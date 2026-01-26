@@ -1740,6 +1740,30 @@ function saveYunwuConfig() {
           }
         }
 
+        // 验证请求参数
+        if (!imageUrl) {
+          showLoading(false);
+          alert('❌ 缺少必需参数：数字人头像图片\n\n请确保在步骤2中上传了数字人头像图片。');
+          return;
+        }
+        
+        if (!audioFileBase64) {
+          showLoading(false);
+          alert('❌ 缺少必需参数：音频文件\n\n云雾数字人必须提供音频，请：\n1. 在步骤2中上传音频文件\n2. 或使用实时录制功能录制音频');
+          return;
+        }
+        
+        console.log('发送创建请求:', {
+          provider: 'yunwu',
+          hasApiKey: !!apiKey,
+          hasImageUrl: !!imageUrl,
+          imageUrlLength: imageUrl ? imageUrl.length : 0,
+          hasAudioFile: !!audioFileBase64,
+          audioFileLength: audioFileBase64 ? audioFileBase64.length : 0,
+          text: script || '数字人视频',
+          prompt: script || '数字人视频生成'
+        });
+        
         const response = await fetch('/api/digital-human/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1784,6 +1808,20 @@ function saveYunwuConfig() {
               }
             } catch {
               alert('❌ 账号配额不足\n\n请访问 https://yunwu.ai/topup 充值余额后重试。\n\n错误详情：' + errorMessage);
+            }
+          } else if (response.status === 400) {
+            // ✅ 特殊处理：400 Bad Request
+            // 检查是否是 Token 类型错误
+            if (/mistake|类型错误|token.*type|令牌类型|TOKEN_TYPE_ERROR/i.test(errorMessage)) {
+              // Token 类型错误，显示详细解决方案
+              alert(errorMessage);
+              // 打开令牌管理页面
+              if (confirm('⚠️ 检测到Token类型为"mistake"！\n\n是否现在打开令牌管理页面修复Token类型？')) {
+                window.open('https://yunwu.ai/token', '_blank');
+              }
+            } else {
+              // 其他参数错误
+              alert('❌ 参数错误：' + errorMessage + '\n\n请检查：\n1. 是否上传了数字人头像图片\n2. 是否上传了音频文件\n3. 文件格式是否正确');
             }
           } else {
             alert('❌ 创建任务失败：' + errorMessage);

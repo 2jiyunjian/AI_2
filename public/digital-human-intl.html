@@ -1932,6 +1932,24 @@
   </div>
   
   <script>
+    // ========== API 配置 ==========
+    function getApiBaseUrl() {
+      try {
+        const customBaseUrl = localStorage.getItem('api_base_url');
+        if (customBaseUrl && customBaseUrl.trim()) {
+          return customBaseUrl.trim().replace(/\/+$/, '');
+        }
+      } catch (e) {
+        console.warn('无法读取 api_base_url 配置:', e);
+      }
+      return '';
+    }
+
+    function buildApiUrl(path) {
+      const baseUrl = getApiBaseUrl();
+      const normalizedPath = path.startsWith('/') ? path : '/' + path;
+      return baseUrl + normalizedPath;
+    }
     // 检查登录
     const user = JSON.parse(sessionStorage.getItem('user'));
     if (!user) window.location.href = '/';
@@ -3137,7 +3155,7 @@
         }
         
         // 调用服务器端 API 创建任务
-        const response = await fetch('/api/heygen/video', {
+        const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -3565,7 +3583,7 @@
       showLoading(true, 'Recreating task...');
       
       try {
-        const response = await fetch('/api/heygen/video', {
+        const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -3785,7 +3803,7 @@
       showStatus('heygenStatus', '⏳ Testing connection...', 'warning');
       
       try {
-        const response = await fetch('/api/heygen/test', {
+        const response = await fetch(buildApiUrl('/api/heygen/test'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -5063,7 +5081,7 @@
         const voiceSelect = document.getElementById('reciteVoiceSelect');
         const voiceId = voiceSelect && voiceSelect.value ? voiceSelect.value : null;
         
-        const response = await fetch('/api/heygen/video', {
+        const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -5388,7 +5406,7 @@
         // 构建推广文案
         const script = `大家好，今天为大家推荐一款${productName}。${productDesc}。感兴趣的朋友不要错过！`;
         
-        const response = await fetch('/api/heygen/video', {
+        const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

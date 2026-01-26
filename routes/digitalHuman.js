@@ -138,6 +138,216 @@ async function parseResponse(response, errorContext = '') {
   return { error: false, data, status: response.status };
 }
 
+// ========== 统一的错误检测和处理函数 ==========
+
+/**
+ * 检测错误消息是否为Token类型错误（mistake类型）
+ * @param {string} errorMessage - 错误消息
+ * @returns {boolean} - 是否为Token类型错误
+ */
+function isTokenTypeError(errorMessage) {
+  if (!errorMessage || typeof errorMessage !== 'string') {
+    return false;
+  }
+  
+  const errorMsgLower = errorMessage.toLowerCase();
+  
+  // 精确匹配Token类型相关的mistake错误
+  const tokenTypeErrorPatterns = [
+    /token.*type.*mistake/i,
+    /type.*mistake.*token/i,
+    /令牌类型.*mistake/i,
+    /mistake.*token.*type/i,
+    /TOKEN_TYPE_ERROR/i,
+    /类型错误.*token/i,
+    /token.*type.*错误/i,
+    /令牌类型.*错误/i,
+    /token.*invalid.*type/i,
+    /invalid.*token.*type/i
+  ];
+  
+  return tokenTypeErrorPatterns.some(pattern => pattern.test(errorMsgLower));
+}
+
+/**
+ * 检测错误消息是否为配额不足错误
+ * @param {string} errorMessage - 错误消息
+ * @returns {boolean} - 是否为配额不足错误
+ */
+function isQuotaError(errorMessage) {
+  if (!errorMessage || typeof errorMessage !== 'string') {
+    return false;
+  }
+  
+  const errorMsgLower = errorMessage.toLowerCase();
+  const quotaErrorPatterns = [
+    /insufficient quota/i,
+    /quota.*exceeded/i,
+    /余额不足/i,
+    /配额不足/i,
+    /insufficient balance/i,
+    /balance.*insufficient/i
+  ];
+  
+  return quotaErrorPatterns.some(pattern => pattern.test(errorMsgLower));
+}
+
+/**
+ * 检测错误消息是否为通道不可用错误（分组不支持）
+ * @param {string} errorMessage - 错误消息
+ * @returns {boolean} - 是否为通道不可用错误
+ */
+function isChannelUnavailableError(errorMessage) {
+  if (!errorMessage || typeof errorMessage !== 'string') {
+    return false;
+  }
+  
+  const errorMsgLower = errorMessage.toLowerCase();
+  const channelErrorPatterns = [
+    /no available channels/i,
+    /暂无可用/i,
+    /不支持.*数字人/i,
+    /数字人.*不支持/i,
+    /可灵.*不支持/i,
+    /kling.*不支持/i,
+    /group.*不支持/i
+  ];
+  
+  return channelErrorPatterns.some(pattern => pattern.test(errorMsgLower));
+}
+
+/**
+ * 创建Token类型错误的统一响应
+ * @param {Object} options - 选项
+ * @param {string} options.helpUrl - 帮助页面URL
+ * @param {number} options.statusCode - HTTP状态码
+ * @returns {Object} - 错误响应对象
+ */
+function createTokenTypeErrorResponse(options = {}) {
+  const {
+    helpUrl = 'https://yunwu.ai/token',
+    statusCode = 400
+  } = options;
+  
+  return {
+    success: false,
+    message: '❌ API令牌类型错误\n\n您的API令牌类型显示为"mistake"，这表示令牌配置不正确。\n\n解决方案：\n1. 访问 https://yunwu.ai/token 进入令牌管理页面\n2. 检查当前令牌的Type是否为"mistake"\n3. 如果Type为"mistake"，请删除该令牌\n4. 创建新令牌，确保：\n   • 选择正确的分组（Group）\n   • 确保分组包含「可灵Kling」或「数字人」服务\n   • Type应该显示为正常类型（不是"mistake"）\n5. 使用新创建的令牌重新配置\n\n💡 提示：如果令牌类型显示为"mistake"，即使有余额也可能无法正常使用。',
+    error: 'TOKEN_TYPE_ERROR',
+    errorCode: 'TOKEN_TYPE_ERROR',
+    helpUrl,
+    statusCode
+  };
+}
+
+/**
+ * 创建配额不足错误的统一响应
+ * @param {Object} options - 选项
+ * @param {boolean} options.suggestCheckToken - 是否建议检查Token类型
+ * @param {string} options.helpUrl - 帮助页面URL
+ * @param {number} options.statusCode - HTTP状态码
+ * @returns {Object} - 错误响应对象
+ */
+function createQuotaErrorResponse(options = {}) {
+  const {
+    suggestCheckToken = false,
+    helpUrl = 'https://yunwu.ai/topup',
+    statusCode = 403
+  } = options;
+  
+  if (suggestCheckToken) {
+    return {
+      success: false,
+      message: '❌ 账号配额不足（可能是Token类型问题）\n\n⚠️ 重要提示：\n如果您的令牌Type显示为"mistake"，即使有余额也会显示"配额不足"。\n\n请按以下步骤操作：\n\n第一步：检查Token类型\n1. 访问 https://yunwu.ai/token 进入令牌管理页面\n2. 查看当前使用的Token，检查Type列\n3. 如果Type显示为"mistake"（红色/粉色标签），这是问题根源\n\n第二步：修复Token类型\n1. 删除Type为"mistake"的Token\n2. 创建新Token，确保：\n   • 选择正确的分组（Group）\n   • 确保分组包含「可灵Kling」或「数字人」服务\n   • Type应该显示为正常类型（不是"mistake"）\n3. 使用新Token重新配置\n\n第三步：检查余额（如果Token类型正常）\n1. 访问 https://yunwu.ai/topup 充值账户余额\n2. 确认Token有足够的配额\n\n💡 提示：Type为"mistake"的Token无法正常使用，必须先修复。',
+      error: 'QUOTA_INSUFFICIENT',
+      errorCode: 'QUOTA_INSUFFICIENT',
+      helpUrl: 'https://yunwu.ai/token',
+      suggestCheckToken: true,
+      statusCode
+    };
+  }
+  
+  return {
+    success: false,
+    message: '❌ 账号配额不足\n\n您的云雾AI账号余额或配额已用完，无法创建数字人。\n\n解决方案：\n1. 访问 https://yunwu.ai/topup 充值账户余额\n2. 确认令牌有足够的配额后重试\n\n如有疑问，请联系云雾AI客服。',
+    error: 'QUOTA_INSUFFICIENT',
+    errorCode: 'QUOTA_INSUFFICIENT',
+    helpUrl,
+    statusCode
+  };
+}
+
+/**
+ * 从API响应中提取错误消息
+ * @param {Object} responseData - API响应数据
+ * @returns {string} - 提取的错误消息
+ */
+function extractErrorMessage(responseData) {
+  if (!responseData) {
+    return '';
+  }
+  
+  return responseData.message || 
+         responseData.error?.message || 
+         responseData.error || 
+         responseData.detail ||
+         (typeof responseData === 'string' ? responseData : '');
+}
+
+/**
+ * 分析并处理云雾API错误响应
+ * @param {Object} response - Fetch响应对象
+ * @param {Object} responseData - 解析后的响应数据
+ * @param {number} httpStatus - HTTP状态码
+ * @returns {Object|null} - 如果是已知错误类型，返回错误响应对象；否则返回null
+ */
+function analyzeYunwuApiError(response, responseData, httpStatus) {
+  const errorMessage = extractErrorMessage(responseData);
+  const errorMsgLower = errorMessage.toLowerCase();
+  
+  // 优先检查Token类型错误
+  if (isTokenTypeError(errorMessage)) {
+    return createTokenTypeErrorResponse({
+      statusCode: httpStatus || 400
+    });
+  }
+  
+  // 检查配额不足错误
+  if (isQuotaError(errorMessage)) {
+    // 如果是403状态码，很可能是Token类型问题导致的配额错误
+    const suggestCheckToken = httpStatus === 403;
+    return createQuotaErrorResponse({
+      suggestCheckToken,
+      statusCode: httpStatus || 403
+    });
+  }
+  
+  // 检查通道不可用错误
+  if (isChannelUnavailableError(errorMessage)) {
+    return {
+      success: false,
+      message: '当前令牌分组不支持可灵数字人。\n\n解决方案：\n1. 访问 https://yunwu.ai/token 进入令牌管理\n2. 新建令牌，选择包含「可灵Kling」或「数字人」的分组\n3. 使用新令牌重新测试',
+      error: 'CHANNEL_UNAVAILABLE',
+      errorCode: 'CHANNEL_UNAVAILABLE',
+      helpUrl: 'https://yunwu.ai/token',
+      statusCode: httpStatus || 400
+    };
+  }
+  
+  // 对于403状态码，即使没有明确的错误消息，也可能是Token类型问题
+  if (httpStatus === 403 && (!errorMessage || errorMessage.trim().length === 0 || 
+      /请求失败|failed|error|如果多次出现|请联系客服/i.test(errorMessage))) {
+    return {
+      success: false,
+      message: `❌ API验证失败 (HTTP ${httpStatus})\n\n根据云雾AI使用日志，类型显示为"错误"，详情："请求失败"。\n\n可能的原因：\n1. ⚠️ Token类型为"mistake"（最常见原因，请优先检查）\n2. Token分组不支持可灵数字人服务\n3. API Key无效或已过期\n4. 服务器内部错误\n\n解决方案：\n1. 访问 https://yunwu.ai/token 检查令牌类型\n2. 如果Type为"mistake"（红色/粉色标签），请删除该令牌\n3. 创建新令牌，确保：\n   • 选择正确的分组（包含「可灵Kling」服务）\n   • Type应该显示为正常类型（不是"mistake"）\n4. 使用新令牌重新测试\n\n💡 提示：如果令牌类型显示为"mistake"，即使有余额也会导致请求失败。`,
+      errorCode: 'API_ERROR',
+      helpUrl: 'https://yunwu.ai/token',
+      statusCode: httpStatus
+    };
+  }
+  
+  return null; // 未知错误类型，返回null让调用者处理
+}
+
 // ========== HeyGen API ==========
 
 // HeyGen 获取可用语音列表
@@ -956,7 +1166,13 @@ router.post('/yunwu/digital-human', async (req, res) => {
     const finalMode = (mode && String(mode).trim()) || 'std';
 
     // 处理 callback_url 和 external_task_id：必需参数，但可以为空字符串
-    const finalCallbackUrl = (callbackUrl !== undefined && callbackUrl !== null) ? String(callbackUrl).trim() : '';
+    // ✅ 优先使用传入的callbackUrl，否则使用环境变量配置的部署URL，最后使用空字符串
+    let finalCallbackUrl = '';
+    if (callbackUrl !== undefined && callbackUrl !== null && String(callbackUrl).trim()) {
+      finalCallbackUrl = String(callbackUrl).trim();
+    } else if (process.env.CALLBACK_URL || process.env.DEPLOY_URL) {
+      finalCallbackUrl = (process.env.CALLBACK_URL || process.env.DEPLOY_URL).trim();
+    }
     const finalExternalTaskId = (externalTaskId !== undefined && externalTaskId !== null) ? String(externalTaskId).trim() : '';
 
     console.log('创建云雾数字人任务:', {
@@ -1160,7 +1376,7 @@ router.post('/yunwu/test', async (req, res) => {
           sound_file: '', // 空字符串，符合规范
           prompt: '', // 空字符串，符合规范
           mode: 'std',
-          callback_url: '',
+          callback_url: process.env.CALLBACK_URL || process.env.DEPLOY_URL || '',
           external_task_id: '',
         }),
         signal: controller.signal,
@@ -1179,40 +1395,43 @@ router.post('/yunwu/test', async (req, res) => {
       }
 
       // 提取错误信息（支持多种格式）
-      const avErr = avData?.message || 
-                    avData?.error?.message || 
-                    avData?.error || 
-                    avData?.detail ||
-                    (typeof avData === 'string' ? avData : '');
-      const avErrStr = String(avErr || '');
-      const avErrLower = avErrStr.toLowerCase();
+      const errorMessage = extractErrorMessage(avData);
+      const errorMsgLower = errorMessage.toLowerCase();
 
-      console.log('云雾API响应:', { 
-        status: avatarRes.status, 
-        error: avErrStr.substring(0, 200),
-        hasNoChannels: /no available channels/i.test(avErrLower)
+      console.log('=== 云雾API测试响应 ===');
+      console.log('HTTP状态码:', avatarRes.status, avatarRes.statusText);
+      console.log('响应头:', Object.fromEntries(avatarRes.headers.entries()));
+      console.log('错误信息:', errorMessage.substring(0, 200));
+      console.log('完整响应数据:', JSON.stringify(avData, null, 2));
+      console.log('错误信息关键词检测:', {
+        hasQuotaError: isQuotaError(errorMessage),
+        hasTokenTypeError: isTokenTypeError(errorMessage),
+        hasNoChannels: isChannelUnavailableError(errorMessage),
+        hasGenericError: /请求失败|failed|error/i.test(errorMsgLower)
       });
 
-      // 优先检查配额/余额不足错误
-      if (/insufficient quota|quota.*exceeded|余额不足|配额不足|insufficient balance|balance.*insufficient/i.test(avErrLower)) {
+      // 使用统一的错误分析函数
+      const analyzedError = analyzeYunwuApiError(avatarRes, avData, avatarRes.status);
+      if (analyzedError) {
+        return res.status(analyzedError.statusCode || 400).json({
+          success: analyzedError.success,
+          message: analyzedError.message,
+          errorCode: analyzedError.errorCode,
+          error: analyzedError.error,
+          helpUrl: analyzedError.helpUrl
+        });
+      }
+
+      // 优先检查配额/余额不足错误（如果统一函数未处理）
+      if (isQuotaError(errorMessage)) {
         return res.json({
           success: false,
           message: 'API 配额不足或余额不足。\n\n解决方案：\n1. 访问 https://yunwu.ai/topup 进入余额管理\n2. 充值账户余额\n3. 确认令牌有足够的配额后重试',
         });
       }
-
-      // ✅ 优先检查令牌类型错误（mistake类型）
-      if (/mistake|类型错误|token.*type|令牌类型|token.*invalid|invalid.*token/i.test(avErrLower)) {
-        return res.json({
-          success: false,
-          message: '❌ API令牌类型错误\n\n您的API令牌类型显示为"mistake"，这表示令牌配置不正确。\n\n解决方案：\n1. 访问 https://yunwu.ai/token 进入令牌管理页面\n2. 检查当前令牌的Type是否为"mistake"\n3. 如果Type为"mistake"，请删除该令牌\n4. 创建新令牌，确保：\n   • 选择正确的分组（Group）\n   • 确保分组包含「可灵Kling」或「数字人」服务\n   • Type应该显示为正常类型（不是"mistake"）\n5. 使用新创建的令牌重新配置\n\n💡 提示：如果令牌类型显示为"mistake"，即使有余额也可能无法正常使用。',
-          errorCode: 'TOKEN_TYPE_ERROR'
-        });
-      }
       
-      // 优先检查 "No available channels" 错误（令牌分组不支持）
-      if (/no available channels|暂无可用|不支持|not available|group.*不支持/i.test(avErrLower) || 
-          /可灵|kling|数字人.*不支持|不支持.*数字人/i.test(avErrLower)) {
+      // 优先检查 "No available channels" 错误（如果统一函数未处理）
+      if (isChannelUnavailableError(errorMessage)) {
         return res.json({
           success: false,
           message: '当前令牌分组不支持可灵数字人。\n\n解决方案：\n1. 访问 https://yunwu.ai/token 进入令牌管理\n2. 新建令牌，选择包含「可灵Kling」或「数字人」的分组\n3. 使用新令牌重新测试',
@@ -1250,10 +1469,27 @@ router.post('/yunwu/test', async (req, res) => {
         });
       }
 
+      // 其他状态码（包括500等服务器错误）
+      // 如果错误信息为空或通用（如"请求失败"），可能是Token类型问题或其他配置问题
+      // 根据您的日志，详情显示"请求失败,如果多次出现,请联系客服"，这通常是Token配置问题
+      if (!errorMessage || errorMessage.trim().length === 0 || 
+          /请求失败|failed|error|如果多次出现|请联系客服/i.test(errorMessage) ||
+          (avatarRes.status >= 500 && avatarRes.status < 600)) {
+        const genericError = analyzeYunwuApiError(avatarRes, { message: errorMessage || '请求失败' }, avatarRes.status);
+        if (genericError) {
+          return res.status(genericError.statusCode || 400).json({
+            success: genericError.success,
+            message: genericError.message,
+            errorCode: genericError.errorCode || (avatarRes.status >= 500 ? 'SERVER_ERROR' : 'API_ERROR'),
+            helpUrl: genericError.helpUrl
+          });
+        }
+      }
+      
       // 其他状态码
       return res.json({
         success: false,
-        message: avErrStr || `验证未通过 (HTTP ${avatarRes.status})，请确认 API Key 正确且具备可灵数字人权限。可在云雾AI 令牌管理 中新建含「可灵Kling」分组的令牌。`,
+        message: errorMessage || `验证未通过 (HTTP ${avatarRes.status})，请确认 API Key 正确且具备可灵数字人权限。可在云雾AI 令牌管理 中新建含「可灵Kling」分组的令牌。`,
       });
     } catch (fetchError) {
       const err = handleFetchError(fetchError, '云雾API');
@@ -1533,18 +1769,24 @@ router.post('/digital-human/create', async (req, res) => {
 
     // ========== 云雾API处理 ==========
     if (provider === 'yunwu') {
-      console.log('处理云雾数字人创建...');
+      console.log('=== 处理云雾数字人创建 ===');
       
       // 云雾必须提供音频
       const hasValidAudioId = audioId && String(audioId).trim().length > 0;
       const hasValidAudioFile = audioFile && String(audioFile).trim().length > 0;
       
-      console.log('音频验证:', {
+      console.log('音频验证详情:', {
         hasAudioId: hasValidAudioId,
         audioId: audioId ? String(audioId).substring(0, 20) + '...' : '无',
+        audioIdLength: audioId ? String(audioId).length : 0,
+        audioIdTrimmedLength: audioId ? String(audioId).trim().length : 0,
         hasAudioFile: hasValidAudioFile,
+        audioFileType: typeof audioFile,
+        audioFileIsString: typeof audioFile === 'string',
         audioFileLength: audioFile ? String(audioFile).length : 0,
-        audioFilePreview: audioFile ? String(audioFile).substring(0, 50) + '...' : '无'
+        audioFileTrimmedLength: audioFile ? String(audioFile).trim().length : 0,
+        audioFilePreview: audioFile ? String(audioFile).substring(0, 50) + '...' : '无',
+        audioFileStartsWithData: audioFile ? String(audioFile).startsWith('data:') : false
       });
       
       if (!hasValidAudioId && !hasValidAudioFile) {
@@ -1624,7 +1866,8 @@ router.post('/digital-human/create', async (req, res) => {
         // 其他必需参数
         prompt: prompt || text || '', // 使用传入的prompt或text
         mode: mode === 'standard' ? 'std' : mode, // 标准化模式参数
-        callback_url: '',
+        // ✅ 使用部署后的URL作为callback_url（如果配置了），避免localhost导致的问题
+        callback_url: process.env.CALLBACK_URL || process.env.DEPLOY_URL || '',
         external_task_id: '',
         
         // 可选参数
@@ -1726,32 +1969,23 @@ router.post('/digital-human/create', async (req, res) => {
           console.error('完整错误响应:', JSON.stringify(result, null, 2));
           
           // ✅ 提取错误消息，保留原始错误信息
-          const errorMsg = result?.message || result?.error?.message || result?.error || 
-                          result?.detail || `API错误: ${response.status}`;
+          const errorMsg = extractErrorMessage(result) || `API错误: ${response.status}`;
           
-          // ✅ 特殊处理：403错误
-          if (response.status === 403) {
-            const errorMsgLower = errorMsg.toLowerCase();
-            
-            // ✅ 优先检查令牌类型错误（mistake类型）
-            if (/mistake|类型错误|token.*type|令牌类型|token.*invalid|invalid.*token/i.test(errorMsgLower)) {
-              // ✅ 修复：在抛出错误前清理timeoutId
-              if (timeoutId) {
-                clearTimeout(timeoutId);
-                timeoutId = null;
-              }
-              throw new Error('API令牌类型错误（mistake）');
+          // ✅ 使用统一的错误分析函数
+          const analyzedError = analyzeYunwuApiError(response, result, response.status);
+          if (analyzedError) {
+            // ✅ 修复：在抛出错误前清理timeoutId
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
             }
-            
-            // ✅ 检查配额不足错误（403+配额不足很可能是Token类型为"mistake"导致）
-            if (/账号配额不足|配额不足|insufficient quota|quota.*exceeded|余额不足|insufficient balance|balance.*insufficient/i.test(errorMsgLower)) {
-              // ✅ 修复：在抛出错误前清理timeoutId
-              if (timeoutId) {
-                clearTimeout(timeoutId);
-                timeoutId = null;
-              }
-              // 标记为可能是Token类型问题，让catch块处理时优先提示检查Token
+            // 根据错误类型抛出相应的错误，让catch块处理
+            if (analyzedError.errorCode === 'TOKEN_TYPE_ERROR') {
+              throw new Error('API令牌类型错误（mistake）');
+            } else if (analyzedError.errorCode === 'QUOTA_INSUFFICIENT' && analyzedError.suggestCheckToken) {
               throw new Error('账号配额不足（可能是Token类型为mistake）');
+            } else {
+              throw new Error(errorMsg);
             }
           }
           
@@ -1814,42 +2048,41 @@ router.post('/digital-human/create', async (req, res) => {
           });
         }
         
-        // ✅ 特殊处理：配额不足错误
-        const errorMsgLower = (apiError.message || '').toLowerCase();
+        // ✅ 使用统一的错误分析函数处理错误
+        const errorMsg = apiError.message || '';
+        const errorMsgLower = errorMsg.toLowerCase();
         
-        // ✅ 优先检查令牌类型错误（mistake类型）
-        if (/mistake|类型错误|token.*type|令牌类型|token.*invalid|invalid.*token/i.test(errorMsgLower)) {
-          return res.status(400).json({
-            success: false,
-            message: '❌ API令牌类型错误\n\n您的API令牌类型显示为"mistake"，这表示令牌配置不正确。\n\n解决方案：\n1. 访问 https://yunwu.ai/token 进入令牌管理页面\n2. 检查当前令牌的Type是否为"mistake"\n3. 如果Type为"mistake"，请删除该令牌\n4. 创建新令牌，确保：\n   • 选择正确的分组（Group）\n   • 确保分组包含「可灵Kling」或「数字人」服务\n   • Type应该显示为正常类型（不是"mistake"）\n5. 使用新创建的令牌重新配置\n\n💡 提示：如果令牌类型显示为"mistake"，即使有余额也可能无法正常使用。',
-            error: 'TOKEN_TYPE_ERROR',
-            errorCode: 'TOKEN_TYPE_ERROR',
-            helpUrl: 'https://yunwu.ai/token'
+        // 检查是否为Token类型错误
+        if (isTokenTypeError(errorMsg)) {
+          const tokenErrorResponse = createTokenTypeErrorResponse({ statusCode: 400 });
+          return res.status(tokenErrorResponse.statusCode).json({
+            success: tokenErrorResponse.success,
+            message: tokenErrorResponse.message,
+            error: tokenErrorResponse.error,
+            errorCode: tokenErrorResponse.errorCode,
+            helpUrl: tokenErrorResponse.helpUrl
           });
         }
         
-        // ✅ 特殊处理：403 + 配额不足（很可能是Token类型为"mistake"导致）
-        // 注意：在catch块中，response可能未定义，所以只检查错误消息
-        if ((errorMsgLower.includes('403') || errorMsgLower.includes('forbidden')) && 
-            /账号配额不足|配额不足|insufficient quota|quota.*exceeded|余额不足|insufficient balance|balance.*insufficient/i.test(errorMsgLower)) {
-          return res.status(403).json({
-            success: false,
-            message: '❌ 账号配额不足（可能是Token类型问题）\n\n⚠️ 重要提示：\n如果您的令牌Type显示为"mistake"，即使有余额也会显示"配额不足"。\n\n请按以下步骤操作：\n\n第一步：检查Token类型\n1. 访问 https://yunwu.ai/token 进入令牌管理页面\n2. 查看当前使用的Token，检查Type列\n3. 如果Type显示为"mistake"（红色/粉色标签），这是问题根源\n\n第二步：修复Token类型\n1. 删除Type为"mistake"的Token\n2. 创建新Token，确保：\n   • 选择正确的分组（Group）\n   • 确保分组包含「可灵Kling」或「数字人」服务\n   • Type应该显示为正常类型（不是"mistake"）\n3. 使用新Token重新配置\n\n第三步：检查余额（如果Token类型正常）\n1. 访问 https://yunwu.ai/topup 充值账户余额\n2. 确认Token有足够的配额\n\n💡 提示：Type为"mistake"的Token无法正常使用，必须先修复。',
-            error: 'QUOTA_INSUFFICIENT',
-            errorCode: 'QUOTA_INSUFFICIENT',
-            helpUrl: 'https://yunwu.ai/token',
-            suggestCheckToken: true  // 标记建议检查Token类型
+        // 检查是否为配额不足错误
+        if (isQuotaError(errorMsg)) {
+          // 检查错误消息中是否包含403或forbidden，这通常表示可能是Token类型问题
+          const suggestCheckToken = errorMsgLower.includes('403') || 
+                                    errorMsgLower.includes('forbidden') ||
+                                    errorMsg.includes('可能是Token类型为mistake');
+          
+          const quotaErrorResponse = createQuotaErrorResponse({
+            suggestCheckToken,
+            statusCode: 403
           });
-        }
-        
-        // 普通配额不足错误（非403）
-        if (/账号配额不足|配额不足|insufficient quota|quota.*exceeded|余额不足|insufficient balance|balance.*insufficient/i.test(errorMsgLower)) {
-          return res.status(403).json({
-            success: false,
-            message: '❌ 账号配额不足\n\n您的云雾AI账号余额或配额已用完，无法创建数字人。\n\n解决方案：\n1. 访问 https://yunwu.ai/topup 充值账户余额\n2. 确认令牌有足够的配额后重试\n\n如有疑问，请联系云雾AI客服。',
-            error: 'QUOTA_INSUFFICIENT',
-            errorCode: 'QUOTA_INSUFFICIENT',
-            helpUrl: 'https://yunwu.ai/topup'
+          
+          return res.status(quotaErrorResponse.statusCode).json({
+            success: quotaErrorResponse.success,
+            message: quotaErrorResponse.message,
+            error: quotaErrorResponse.error,
+            errorCode: quotaErrorResponse.errorCode,
+            helpUrl: quotaErrorResponse.helpUrl,
+            suggestCheckToken: quotaErrorResponse.suggestCheckToken
           });
         }
         

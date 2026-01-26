@@ -139,14 +139,22 @@
             <div class="api-actions">
               <button class="api-btn primary" onclick="saveYunwuConfig()">💾 保存配置</button>
               <button class="api-btn success" onclick="testYunwuApi()">🧪 测试连接</button>
+              <button class="api-btn" onclick="showTokenCreationGuide()" style="background: #1890ff; color: white;">📋 Token创建指导</button>
             </div>
             <div id="yunwuStatus"></div>
             
-            <div class="api-help">
+            <div class="api-help" style="background: #fff7e6; border: 1px solid #ffd591; padding: 12px; border-radius: 4px; margin-top: 12px;">
+              <strong>⚠️ 重要提示：避免Token type为"mistake"</strong><br>
+              <span style="color: #d46b08;">创建Token时必须选择包含「可灵Kling」或「数字人」服务的分组，否则Token类型会显示为"mistake"！</span><br>
+              <button onclick="showTokenCreationGuide()" style="margin-top: 8px; padding: 4px 12px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer;">📋 查看详细创建步骤</button>
+            </div>
+            
+            <div class="api-help" style="margin-top: 12px;">
               <strong>📖 获取步骤：</strong><br>
               1. 访问 <a href="https://yunwu.ai" target="_blank" rel="noopener">云雾AI官网</a> 注册账号<br>
               2. 登录后进入「令牌管理」页面<br>
-              3. 创建 Token，并复制作为 API Key 使用<br>
+              3. 创建 Token，<strong style="color: #d46b08;">确保选择包含「可灵Kling」服务的分组</strong><br>
+              4. 复制 Token 作为 API Key 使用<br>
               <br>
               <strong>✨ 用途说明：</strong><br>
               • 用于调用「可灵 Kling 数字人」API 生成数字人视频<br>

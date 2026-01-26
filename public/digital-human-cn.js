@@ -1,3 +1,30 @@
+// ========== API 配置 ==========
+// API 基础 URL 配置（支持环境变量或默认使用相对路径）
+// 可以通过 localStorage 设置 'api_base_url' 来覆盖默认值
+function getApiBaseUrl() {
+  // 优先从 localStorage 读取配置
+  try {
+    const customBaseUrl = localStorage.getItem('api_base_url');
+    if (customBaseUrl && customBaseUrl.trim()) {
+      // 移除末尾的斜杠
+      return customBaseUrl.trim().replace(/\/+$/, '');
+    }
+  } catch (e) {
+    console.warn('无法读取 api_base_url 配置:', e);
+  }
+  
+  // 默认使用相对路径（推荐，适用于同域部署）
+  return '';
+}
+
+// 构建完整的 API URL
+function buildApiUrl(path) {
+  const baseUrl = getApiBaseUrl();
+  // 确保 path 以 / 开头
+  const normalizedPath = path.startsWith('/') ? path : '/' + path;
+  return baseUrl + normalizedPath;
+}
+
 // 立即定义 switchMenu 函数，确保在 HTML 解析时就可访问
 function switchMenu(menu) {
   // 更新菜单激活状态
@@ -1331,6 +1358,119 @@ function getHeyGenApiKey() {
   return apiKey;
 }
 
+// ========== 统一的错误处理函数 ==========
+
+/**
+ * 检测错误响应是否为Token类型错误（mistake类型）
+ * @param {Object} errorData - 错误响应数据
+ * @returns {boolean} - 是否为Token类型错误
+ */
+function isTokenTypeErrorResponse(errorData) {
+  if (!errorData) return false;
+  
+  // 检查错误代码
+  if (errorData.errorCode === 'TOKEN_TYPE_ERROR' || errorData.error === 'TOKEN_TYPE_ERROR') {
+    return true;
+  }
+  
+  // 检查错误消息
+  const errorMessage = errorData.message || '';
+  if (!errorMessage) return false;
+  
+  const errorMsgLower = errorMessage.toLowerCase();
+  const tokenTypeErrorPatterns = [
+    /token.*type.*mistake/i,
+    /type.*mistake.*token/i,
+    /令牌类型.*mistake/i,
+    /mistake.*token.*type/i,
+    /TOKEN_TYPE_ERROR/i,
+    /类型错误.*token/i,
+    /token.*type.*错误/i,
+    /令牌类型.*错误/i
+  ];
+  
+  return tokenTypeErrorPatterns.some(pattern => pattern.test(errorMsgLower));
+}
+
+/**
+ * 检测错误响应是否为配额不足错误
+ * @param {Object} errorData - 错误响应数据
+ * @returns {boolean} - 是否为配额不足错误
+ */
+function isQuotaErrorResponse(errorData) {
+  if (!errorData) return false;
+  
+  // 检查错误代码
+  if (errorData.errorCode === 'QUOTA_INSUFFICIENT' || errorData.error === 'QUOTA_INSUFFICIENT') {
+    return true;
+  }
+  
+  // 检查错误消息
+  const errorMessage = errorData.message || '';
+  if (!errorMessage) return false;
+  
+  const errorMsgLower = errorMessage.toLowerCase();
+  return /配额不足|余额不足|quota.*insufficient|insufficient.*quota|余额.*不足/i.test(errorMsgLower);
+}
+
+/**
+ * 处理Token类型错误
+ * @param {Object} errorData - 错误响应数据
+ */
+function handleTokenTypeError(errorData) {
+  const tokenErrorMessage = errorData?.message || 'API令牌类型错误';
+  const helpUrl = errorData?.helpUrl || 'https://yunwu.ai/token';
+  
+  alert(tokenErrorMessage);
+  
+  if (confirm('⚠️ 检测到Token类型为"mistake"！\n\n是否现在打开令牌管理页面修复Token类型？')) {
+    window.open(helpUrl, '_blank');
+  }
+}
+
+/**
+ * 处理配额不足错误
+ * @param {Object} errorData - 错误响应数据
+ */
+function handleQuotaError(errorData) {
+  const quotaMessage = errorData?.message || '账号配额不足';
+  const suggestCheckToken = errorData?.suggestCheckToken || 
+                           quotaMessage.includes('Token类型') || 
+                           quotaMessage.includes('mistake');
+  const helpUrl = suggestCheckToken 
+    ? (errorData?.helpUrl || 'https://yunwu.ai/token')
+    : (errorData?.helpUrl || 'https://yunwu.ai/topup');
+  
+  alert(quotaMessage);
+  
+  if (suggestCheckToken) {
+    if (confirm('⚠️ 这很可能是Token类型问题导致的！\n\n是否现在打开令牌管理页面检查Token类型？\n\n如果Token的Type显示为"mistake"，请删除并创建新Token。')) {
+      window.open(helpUrl, '_blank');
+    }
+  } else {
+    if (confirm('是否现在打开充值页面？')) {
+      window.open(helpUrl, '_blank');
+    }
+  }
+}
+
+/**
+ * 统一处理API错误响应
+ * @param {Object} errorData - 错误响应数据
+ * @param {Function} onOtherError - 处理其他错误的回调函数
+ */
+function handleApiError(errorData, onOtherError) {
+  if (isTokenTypeErrorResponse(errorData)) {
+    handleTokenTypeError(errorData);
+  } else if (isQuotaErrorResponse(errorData)) {
+    handleQuotaError(errorData);
+  } else if (onOtherError) {
+    onOtherError(errorData);
+  } else {
+    alert('❌ 操作失败：' + (errorData?.message || '未知错误'));
+  }
+}
+
 // 获取云雾 API Key
 function getYunwuApiKey() {
   // 先从localStorage获取
@@ -1372,27 +1512,148 @@ function saveHeyGenConfig() {
   setTimeout(() => testHeyGenApi(), 500);
 }
 
-// 保存云雾 API Key
-function saveYunwuConfig() {
-  const apiKey = document.getElementById('yunwuApiKey').value.trim();
+/**
+ * 显示Token创建指导（避免type为"mistake"）
+ */
+function showTokenCreationGuide() {
+  const guideMessage = `📋 如何创建正确的云雾AI Token（避免type为"mistake"）
+
+⚠️ 重要提示：创建Token时必须选择正确的分组，否则Token类型会显示为"mistake"！
+
+创建步骤：
+1. 访问 https://yunwu.ai/token 进入令牌管理页面
+2. 点击"创建新令牌"或"新建Token"
+3. 在"分组（Group）"选择中，必须选择包含以下服务的分组：
+   ✅ 「可灵Kling」服务
+   ✅ 「数字人」服务
+4. 确认Token的Type列显示为正常类型（不是"mistake"）
+5. 复制新创建的Token并粘贴到输入框
+
+❌ 常见错误：
+• 选择了不包含「可灵Kling」的分组
+• 选择了空分组或错误的分组
+• 没有检查Token的Type列
+
+✅ 正确做法：
+• 仔细查看分组说明，确保包含「可灵Kling」或「数字人」服务
+• 创建后立即检查Token的Type列
+• 如果Type显示为"mistake"（红色/粉色标签），请删除并重新创建
+
+💡 提示：如果Token类型为"mistake"，即使有余额也无法正常使用。`;
+
+  if (confirm(guideMessage + '\n\n是否现在打开令牌管理页面？')) {
+    window.open('https://yunwu.ai/token', '_blank');
+  }
+}
+
+// 保存云雾 API Key（增强版，包含预防性检查）
+async function saveYunwuConfig() {
+  const apiKey = document.getElementById('yunwuApiKey')?.value.trim();
   if (!apiKey) {
     alert('请填写云雾 API Key');
     return;
   }
   
-  // ✅ 保存到localStorage
-  try {
-    localStorage.setItem('yunwu_api_key', apiKey);
-    showStatus('yunwuStatus', '✅ API Key 保存成功！已保存到本地，下次打开页面将自动加载。', 'success');
-    console.log('云雾 API Key 已保存到 localStorage');
-  } catch (e) {
-    console.error('保存云雾 API Key 失败:', e);
-    showStatus('yunwuStatus', '❌ 保存失败：' + e.message, 'error');
+  // 基本格式验证
+  if (apiKey.length < 10 || apiKey.length > 200) {
+    showStatus('yunwuStatus', '❌ API Key 格式不正确（长度应在10-200字符之间）', 'error');
     return;
   }
   
-  // 自动测试连接
-  setTimeout(() => testYunwuApi(), 500);
+  // 检查是否是之前保存的Token（避免重复验证）
+  const savedKey = localStorage.getItem('yunwu_api_key');
+  const wasTested = localStorage.getItem('yunwu_api_tested') === 'true';
+  
+  // 如果是新Token或之前未测试过，自动进行验证
+  if (apiKey !== savedKey || !wasTested) {
+    showStatus('yunwuStatus', '⏳ 正在验证Token配置（防止type为"mistake"）...', 'warning');
+    
+    try {
+      // 自动调用测试接口进行验证
+      const response = await fetch(buildApiUrl('/api/yunwu/test'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey })
+      });
+      
+      const contentType = response.headers.get('content-type') || '';
+      let result;
+      
+      if (contentType.includes('application/json')) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('验证接口返回非JSON响应:', text.substring(0, 200));
+        throw new Error('验证接口返回了非 JSON 格式的响应');
+      }
+      
+      if (result.success) {
+        // 验证通过，保存Token
+        try {
+          localStorage.setItem('yunwu_api_key', apiKey);
+          localStorage.setItem('yunwu_api_tested', 'true');
+          localStorage.setItem('yunwu_api_test_time', new Date().toISOString());
+          showStatus('yunwuStatus', '✅ Token验证通过！配置已保存（Token类型正常，可以正常使用）', 'success');
+          console.log('云雾 API Key 已保存到 localStorage（已验证）');
+        } catch (e) {
+          console.error('保存云雾 API Key 失败:', e);
+          showStatus('yunwuStatus', '❌ 验证通过但保存失败：' + e.message, 'error');
+          return;
+        }
+      } else {
+        // 验证失败，检查是否是Token类型错误
+        if (isTokenTypeErrorResponse(result)) {
+          showStatus('yunwuStatus', '❌ Token类型错误（type为"mistake"）', 'error');
+          handleTokenTypeError(result);
+          
+          // 显示创建指导
+          setTimeout(() => {
+            if (confirm('⚠️ 检测到Token类型为"mistake"！\n\n是否查看如何创建正确的Token？')) {
+              showTokenCreationGuide();
+            }
+          }, 1000);
+          
+          // 不保存错误的Token
+          return;
+        } else {
+          // 其他错误，仍然保存但提示用户
+          try {
+            localStorage.setItem('yunwu_api_key', apiKey);
+            localStorage.removeItem('yunwu_api_tested');
+            showStatus('yunwuStatus', '⚠️ Token已保存，但验证失败：' + (result.message || '未知错误') + '\n\n建议：点击"测试连接"进行详细检查', 'warning');
+            console.log('云雾 API Key 已保存（但验证失败）');
+          } catch (e) {
+            console.error('保存云雾 API Key 失败:', e);
+            showStatus('yunwuStatus', '❌ 验证失败且无法保存：' + (result.message || '未知错误'), 'error');
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('自动验证Token错误:', error);
+      // 验证失败，但仍然保存（可能是网络问题）
+      try {
+        localStorage.setItem('yunwu_api_key', apiKey);
+        showStatus('yunwuStatus', '⚠️ Token已保存，但自动验证失败（可能是网络问题）\n\n强烈建议：点击"测试连接"按钮进行验证，确保Token类型正确', 'warning');
+        console.log('云雾 API Key 已保存（但自动验证失败）');
+      } catch (e) {
+        console.error('保存云雾 API Key 失败:', e);
+        showStatus('yunwuStatus', '❌ 无法保存Token：' + error.message, 'error');
+        return;
+      }
+    }
+  } else {
+    // 已测试过的Token，直接保存
+    try {
+      localStorage.setItem('yunwu_api_key', apiKey);
+      showStatus('yunwuStatus', '✅ API Key 保存成功！已保存到本地，下次打开页面将自动加载。', 'success');
+      console.log('云雾 API Key 已保存到 localStorage（之前已验证）');
+    } catch (e) {
+      console.error('保存云雾 API Key 失败:', e);
+      showStatus('yunwuStatus', '❌ 保存失败：' + e.message, 'error');
+      return;
+    }
+  }
 }
     // ========== 创建数字人（修改版） ==========
     
@@ -1474,7 +1735,7 @@ function saveYunwuConfig() {
       
       try {
         // ✅ 修复：正确的API请求格式
-        const response = await fetch('/api/heygen/video', {
+        const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1634,6 +1895,7 @@ function saveYunwuConfig() {
           if (selectedFrame && selectedFrame.dataUrl) {
             // 移除data URL前缀，只保留base64数据
             imageUrl = selectedFrame.dataUrl.includes(',') ? selectedFrame.dataUrl.split(',')[1] : selectedFrame.dataUrl;
+            console.log('✅ 图片已从视频帧提取，大小:', (imageUrl.length / 1024).toFixed(2), 'KB', '格式: Base64');
           }
         }
 
@@ -1641,14 +1903,20 @@ function saveYunwuConfig() {
         if (!imageUrl && selectedVideoFile) {
           // 如果上传的是图片文件，直接使用
           if (selectedVideoFile.type && selectedVideoFile.type.startsWith('image/')) {
+            console.log('📷 开始转换图片文件为 base64，文件类型:', selectedVideoFile.type, '文件大小:', (selectedVideoFile.size / 1024).toFixed(2), 'KB');
             imageUrl = await new Promise((resolve, reject) => {
               const reader = new FileReader();
               reader.onload = () => {
                 // 移除data URL前缀，只保留base64数据
-                const base64 = reader.result.includes(',') ? reader.result.split(',')[1] : reader.result;
+                const dataUrl = reader.result;
+                const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+                console.log('✅ 图片文件已转换为 base64，大小:', (base64.length / 1024).toFixed(2), 'KB', '格式:', selectedVideoFile.type, 'Base64长度:', base64.length);
                 resolve(base64);
               };
-              reader.onerror = reject;
+              reader.onerror = (error) => {
+                console.error('❌ 图片文件转换失败:', error);
+                reject(error);
+              };
               reader.readAsDataURL(selectedVideoFile);
             });
           }
@@ -1657,16 +1925,29 @@ function saveYunwuConfig() {
         // 如果还没有图片，尝试使用模板预览图
         if (!imageUrl && typeof selectedTemplatePreviewImage !== 'undefined' && selectedTemplatePreviewImage) {
           // 如果模板预览图是data URL，也需要移除前缀
+          const originalLength = selectedTemplatePreviewImage.length;
           imageUrl = selectedTemplatePreviewImage.includes(',') 
             ? selectedTemplatePreviewImage.split(',')[1] 
             : selectedTemplatePreviewImage;
+          console.log('✅ 图片已从模板预览图提取，原始大小:', (originalLength / 1024).toFixed(2), 'KB', 'Base64大小:', (imageUrl.length / 1024).toFixed(2), 'KB');
         }
 
         if (!imageUrl) {
+          console.error('❌ 图片验证失败: 未找到图片');
           showLoading(false);
           alert('请先在步骤2中上传一张数字人头像图片。\n\n提示：云雾数字人需要一张清晰的正面或半侧面人物照片。');
           return;
         }
+        
+        // 验证图片base64格式
+        if (imageUrl.trim().length === 0) {
+          console.error('❌ 图片验证失败: base64为空');
+          showLoading(false);
+          alert('图片base64编码为空，请重新上传图片。');
+          return;
+        }
+        
+        console.log('✅ 图片准备完成，最终大小:', (imageUrl.length / 1024).toFixed(2), 'KB', 'Base64长度:', imageUrl.length);
 
         // 处理音频文件（如果有）
         let audioFileBase64 = null;
@@ -1753,48 +2034,69 @@ function saveYunwuConfig() {
           return;
         }
         
-        console.log('发送创建请求:', {
+        // 详细记录请求参数
+        const requestPayload = {
           provider: 'yunwu',
-          hasApiKey: !!apiKey,
-          hasImageUrl: !!imageUrl,
-          imageUrlLength: imageUrl ? imageUrl.length : 0,
-          hasAudioFile: !!audioFileBase64,
-          audioFileLength: audioFileBase64 ? audioFileBase64.length : 0,
+          apiKey,
+          imageUrl,
           text: script || '数字人视频',
-          prompt: script || '数字人视频生成'
+          prompt: script || '数字人视频生成',
+          audioFile: audioFileBase64,
+          name,
+          description: desc,
+          mode: 'std'
+        };
+        
+        console.log('=== 发送创建请求 ===');
+        console.log('请求参数摘要:', {
+          provider: requestPayload.provider,
+          hasApiKey: !!requestPayload.apiKey,
+          apiKeyLength: requestPayload.apiKey ? requestPayload.apiKey.length : 0,
+          hasImageUrl: !!requestPayload.imageUrl,
+          imageUrlType: typeof requestPayload.imageUrl,
+          imageUrlLength: requestPayload.imageUrl ? String(requestPayload.imageUrl).length : 0,
+          imageUrlPreview: requestPayload.imageUrl ? String(requestPayload.imageUrl).substring(0, 50) + '...' : '无',
+          hasAudioFile: !!requestPayload.audioFile,
+          audioFileType: typeof requestPayload.audioFile,
+          audioFileLength: requestPayload.audioFile ? String(requestPayload.audioFile).length : 0,
+          audioFilePreview: requestPayload.audioFile ? String(requestPayload.audioFile).substring(0, 50) + '...' : '无',
+          audioFileStartsWithData: requestPayload.audioFile ? String(requestPayload.audioFile).startsWith('data:') : false,
+          text: requestPayload.text,
+          prompt: requestPayload.prompt,
+          name: requestPayload.name,
+          description: requestPayload.description,
+          mode: requestPayload.mode
         });
         
-        const response = await fetch('/api/digital-human/create', {
+        const response = await fetch(buildApiUrl('/api/digital-human/create'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: 'yunwu',
-            apiKey,
-            imageUrl,
-            text: script || '数字人视频', // ✅ 修复：不能为空字符串
-            prompt: script || '数字人视频生成', // ✅ 新增：prompt字段
-            audioFile: audioFileBase64,
-            name,
-            description: desc,
-            mode: 'std'
-          })
+          body: JSON.stringify(requestPayload)
         });
 
         // ✅ 增强错误处理
         if (!response.ok) {
           showLoading(false);
           let errorMessage = '服务器错误';
+          let errorData = null;
+          
           try {
             const errorText = await response.text();
-            let errorData;
+            console.error('=== 服务器错误响应 ===');
+            console.error('HTTP状态码:', response.status, response.statusText);
+            console.error('响应文本:', errorText);
+            
             try {
               errorData = JSON.parse(errorText);
               errorMessage = errorData.message || errorData.error || errorText.substring(0, 200);
+              console.error('解析后的错误数据:', errorData);
             } catch {
               errorMessage = errorText.substring(0, 200) || `HTTP ${response.status} ${response.statusText}`;
+              console.error('无法解析JSON，使用原始文本');
             }
           } catch (e) {
             errorMessage = `HTTP ${response.status} ${response.statusText}`;
+            console.error('读取错误响应失败:', e);
           }
           // ✅ 特殊处理：配额不足错误
           if (response.status === 403 || /配额不足|余额不足|quota/i.test(errorMessage)) {
@@ -1810,21 +2112,18 @@ function saveYunwuConfig() {
               alert('❌ 账号配额不足\n\n请访问 https://yunwu.ai/topup 充值余额后重试。\n\n错误详情：' + errorMessage);
             }
           } else if (response.status === 400) {
-            // ✅ 特殊处理：400 Bad Request
-            // 检查是否是 Token 类型错误
-            if (/mistake|类型错误|token.*type|令牌类型|TOKEN_TYPE_ERROR/i.test(errorMessage)) {
-              // Token 类型错误，显示详细解决方案
-              alert(errorMessage);
-              // 打开令牌管理页面
-              if (confirm('⚠️ 检测到Token类型为"mistake"！\n\n是否现在打开令牌管理页面修复Token类型？')) {
-                window.open('https://yunwu.ai/token', '_blank');
-              }
+            // ✅ 使用统一的错误处理函数
+            if (isTokenTypeErrorResponse(errorData)) {
+              handleTokenTypeError(errorData);
             } else {
               // 其他参数错误
               alert('❌ 参数错误：' + errorMessage + '\n\n请检查：\n1. 是否上传了数字人头像图片\n2. 是否上传了音频文件\n3. 文件格式是否正确');
             }
           } else {
-            alert('❌ 创建任务失败：' + errorMessage);
+            // 使用统一的错误处理函数处理其他错误
+            handleApiError(errorData, (err) => {
+              alert('❌ 创建任务失败：' + (err?.message || errorMessage));
+            });
           }
           console.error('服务器错误响应:', response.status, errorMessage);
           return;
@@ -1846,46 +2145,10 @@ function saveYunwuConfig() {
         if (!result.success) {
           showLoading(false);
           
-          // ✅ 特殊处理：令牌类型错误（mistake类型）
-          if (result.errorCode === 'TOKEN_TYPE_ERROR' || result.error === 'TOKEN_TYPE_ERROR' || 
-              (result.message && /mistake|类型错误|token.*type|令牌类型/i.test(result.message))) {
-            const tokenErrorMessage = result.message || 'API令牌类型错误';
-            const helpUrl = result.helpUrl || 'https://yunwu.ai/token';
-            alert(tokenErrorMessage);
-            // 打开令牌管理页面
-            if (confirm('是否现在打开令牌管理页面？\n\n请检查并修复令牌类型问题。')) {
-              window.open(helpUrl, '_blank');
-            }
-          }
-          // ✅ 特殊处理：配额不足错误，显示更友好的提示
-          else if (result.errorCode === 'QUOTA_INSUFFICIENT' || result.error === 'QUOTA_INSUFFICIENT' || 
-              (result.message && /配额不足|余额不足|quota/i.test(result.message))) {
-            const quotaMessage = result.message || '账号配额不足';
-            // 检查是否建议检查Token类型
-            const suggestCheckToken = result.suggestCheckToken || 
-                                     quotaMessage.includes('Token类型') || 
-                                     quotaMessage.includes('mistake');
-            
-            // 显示友好的配额不足提示
-            const helpUrl = suggestCheckToken ? (result.helpUrl || 'https://yunwu.ai/token') : (result.helpUrl || 'https://yunwu.ai/topup');
-            const pageName = suggestCheckToken ? '令牌管理页面' : '充值页面';
-            
-            alert(quotaMessage);
-            
-            // 根据情况打开不同页面
-            if (suggestCheckToken) {
-              if (confirm('⚠️ 这很可能是Token类型问题导致的！\n\n是否现在打开令牌管理页面检查Token类型？\n\n如果Token的Type显示为"mistake"，请删除并创建新Token。')) {
-                window.open(helpUrl, '_blank');
-              }
-            } else {
-              if (confirm('是否现在打开充值页面？')) {
-                window.open(helpUrl, '_blank');
-              }
-            }
-          } else {
-            // 其他错误
-            alert('❌ 创建任务失败：' + (result.message || '未知错误'));
-          }
+          // ✅ 使用统一的错误处理函数
+          handleApiError(result, (err) => {
+            alert('❌ 创建任务失败：' + (err?.message || '未知错误'));
+          });
           
           return;
         }
@@ -1965,7 +2228,7 @@ function saveYunwuConfig() {
         }
         
         try {
-          const response = await fetch(`/api/digital-human/task/${provider}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+          const response = await fetch(buildApiUrl(`/api/digital-human/task/${provider}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`));
           
           const contentType = response.headers.get('content-type') || '';
           let result;
@@ -2295,7 +2558,7 @@ if (dh.status) {
       }
       
       try {
-        const response = await fetch(`/api/digital-human/task/yunwu/${dh.taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+        const response = await fetch(buildApiUrl(`/api/digital-human/task/yunwu/${dh.taskId}?apiKey=${encodeURIComponent(apiKey)}`));
         
         const contentType = response.headers.get('content-type') || '';
         let result;
@@ -2339,7 +2602,7 @@ if (dh.status) {
       }
       
       try {
-        const response = await fetch(`/api/heygen/task/${dh.taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+        const response = await fetch(buildApiUrl(`/api/heygen/task/${dh.taskId}?apiKey=${encodeURIComponent(apiKey)}`));
         
         const contentType = response.headers.get('content-type') || '';
         let result;
@@ -2397,7 +2660,7 @@ if (dh.status) {
       showLoading(true, '正在重新创建任务...');
       
       try {
-        const response = await fetch('/api/heygen/video', {
+        const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2743,7 +3006,7 @@ async function retryTask(digitalHumanId) {
       showStatus('heygenStatus', '⏳ 正在测试连接...', 'warning');
       
       try {
-        const response = await fetch('/api/heygen/test', {
+        const response = await fetch(buildApiUrl('/api/heygen/test'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2816,7 +3079,7 @@ async function retryTask(digitalHumanId) {
       showStatus('yunwuStatus', '⏳ 正在测试数字人API连接...', 'warning');
       
       try {
-        const response = await fetch('/api/yunwu/test', {
+        const response = await fetch(buildApiUrl('/api/yunwu/test'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ apiKey })
@@ -2840,7 +3103,18 @@ async function retryTask(digitalHumanId) {
           showStatus('yunwuStatus', '✅ ' + (result.message || '云雾数字人API连接正常，可以用于创建数字人视频'), 'success');
         } else {
           localStorage.removeItem('yunwu_api_tested');
-          showStatus('yunwuStatus', '❌ 云雾数字人API测试失败：' + (result.message || '未知错误'), 'error');
+          
+          // ✅ 使用统一的错误处理函数
+          if (isTokenTypeErrorResponse(result)) {
+            const tokenErrorMessage = result.message || 'API令牌类型错误';
+            showStatus('yunwuStatus', '❌ ' + tokenErrorMessage, 'error');
+            // 显示详细提示
+            setTimeout(() => {
+              handleTokenTypeError(result);
+            }, 500);
+          } else {
+            showStatus('yunwuStatus', '❌ 云雾数字人API测试失败：' + (result.message || '未知错误'), 'error');
+          }
         }
       } catch (error) {
         console.error('测试云雾API错误:', error);
@@ -3545,7 +3819,7 @@ async function retryTask(digitalHumanId) {
       }
       
       try {
-        const response = await fetch(`/api/heygen/voices?apiKey=${encodeURIComponent(apiKey)}`, {
+        const response = await fetch(buildApiUrl(`/api/heygen/voices?apiKey=${encodeURIComponent(apiKey)}`), {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -4585,7 +4859,7 @@ async function retryTask(digitalHumanId) {
         const voiceSelect = document.getElementById('reciteVoiceSelect');
         const voiceId = voiceSelect && voiceSelect.value ? voiceSelect.value : null;
         
-        const response = await fetch('/api/heygen/video', {
+        const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -4916,7 +5190,7 @@ async function retryTask(digitalHumanId) {
         // 构建推广文案
         const script = `大家好，今天为大家推荐一款${productName}。${productDesc}。感兴趣的朋友不要错过！`;
         
-        const response = await fetch('/api/heygen/video', {
+        const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

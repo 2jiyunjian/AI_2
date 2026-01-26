@@ -686,6 +686,24 @@
   </div>
 
   <script>
+    // ========== API 配置 ==========
+    function getApiBaseUrl() {
+      try {
+        const customBaseUrl = localStorage.getItem('api_base_url');
+        if (customBaseUrl && customBaseUrl.trim()) {
+          return customBaseUrl.trim().replace(/\/+$/, '');
+        }
+      } catch (e) {
+        console.warn('无法读取 api_base_url 配置:', e);
+      }
+      return '';
+    }
+
+    function buildApiUrl(path) {
+      const baseUrl = getApiBaseUrl();
+      const normalizedPath = path.startsWith('/') ? path : '/' + path;
+      return baseUrl + normalizedPath;
+    }
     // 全局变量
     let currentAgent = null;
     let messages = [];
@@ -1084,7 +1102,7 @@
         console.log('Using system prompt:', dhSystemPrompt ? 'Digital Human' : 'Agent');
         
         // 调用AI接口
-        const response = await fetch('/api/ai/chat', {
+        const response = await fetch(buildApiUrl('/api/ai/chat'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

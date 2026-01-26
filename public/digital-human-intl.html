@@ -1934,15 +1934,33 @@
   <script>
     // ========== API 配置 ==========
     function getApiBaseUrl() {
+      // 线上部署地址
+      const PRODUCTION_URL = 'https://ai-2-7gjx.onrender.com';
+      
       try {
         const customBaseUrl = localStorage.getItem('api_base_url');
         if (customBaseUrl && customBaseUrl.trim()) {
-          return customBaseUrl.trim().replace(/\/+$/, '');
+          const url = customBaseUrl.trim().replace(/\/+$/, '');
+          // 禁止使用localhost
+          if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
+            return url;
+          }
+          // 如果是localhost，使用线上地址
+          console.warn('检测到localhost地址，已自动切换到线上地址');
         }
       } catch (e) {
         console.warn('无法读取 api_base_url 配置:', e);
       }
-      return '';
+      
+      // 检查当前页面是否是localhost
+      const currentOrigin = window.location.origin;
+      if (currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')) {
+        // 如果是localhost，使用线上地址
+        return PRODUCTION_URL;
+      }
+      
+      // 如果不是localhost，使用当前页面的origin
+      return currentOrigin;
     }
 
     function buildApiUrl(path) {

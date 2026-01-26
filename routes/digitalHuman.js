@@ -231,7 +231,7 @@ function createTokenTypeErrorResponse(options = {}) {
   
   return {
     success: false,
-    message: '❌ API令牌类型错误\n\n您的API令牌类型显示为"mistake"，这表示令牌配置不正确。\n\n解决方案：\n1. 访问 https://yunwu.ai/token 进入令牌管理页面\n2. 检查当前令牌的Type是否为"mistake"\n3. 如果Type为"mistake"，请删除该令牌\n4. 创建新令牌，确保：\n   • 选择正确的分组（Group）\n   • 确保分组包含「可灵Kling」或「数字人」服务\n   • Type应该显示为正常类型（不是"mistake"）\n5. 使用新创建的令牌重新配置\n\n💡 提示：如果令牌类型显示为"mistake"，即使有余额也可能无法正常使用。',
+    message: '❌ API令牌类型错误\n\n您的API令牌类型显示为"mistake"，这表示令牌配置不正确。\n\n请访问 https://yunwu.ai/token 检查并修复令牌配置。',
     error: 'TOKEN_TYPE_ERROR',
     errorCode: 'TOKEN_TYPE_ERROR',
     helpUrl,
@@ -257,7 +257,7 @@ function createQuotaErrorResponse(options = {}) {
   if (suggestCheckToken) {
     return {
       success: false,
-      message: '❌ 账号配额不足（可能是Token类型问题）\n\n⚠️ 重要提示：\n如果您的令牌Type显示为"mistake"，即使有余额也会显示"配额不足"。\n\n请按以下步骤操作：\n\n第一步：检查Token类型\n1. 访问 https://yunwu.ai/token 进入令牌管理页面\n2. 查看当前使用的Token，检查Type列\n3. 如果Type显示为"mistake"（红色/粉色标签），这是问题根源\n\n第二步：修复Token类型\n1. 删除Type为"mistake"的Token\n2. 创建新Token，确保：\n   • 选择正确的分组（Group）\n   • 确保分组包含「可灵Kling」或「数字人」服务\n   • Type应该显示为正常类型（不是"mistake"）\n3. 使用新Token重新配置\n\n第三步：检查余额（如果Token类型正常）\n1. 访问 https://yunwu.ai/topup 充值账户余额\n2. 确认Token有足够的配额\n\n💡 提示：Type为"mistake"的Token无法正常使用，必须先修复。',
+      message: '❌ 账号配额不足（可能是Token类型问题）\n\n如果您的令牌Type显示为"mistake"，即使有余额也会显示"配额不足"。\n\n请访问 https://yunwu.ai/token 检查令牌类型，或访问 https://yunwu.ai/topup 充值余额。',
       error: 'QUOTA_INSUFFICIENT',
       errorCode: 'QUOTA_INSUFFICIENT',
       helpUrl: 'https://yunwu.ai/token',
@@ -313,8 +313,21 @@ function analyzeYunwuApiError(response, responseData, httpStatus) {
   
   // 检查配额不足错误
   if (isQuotaError(errorMessage)) {
-    // 如果是403状态码，很可能是Token类型问题导致的配额错误
-    const suggestCheckToken = httpStatus === 403;
+    // ✅ 修复：只有当错误消息明确提到Token类型或mistake时，才建议检查Token
+    // 不能仅基于HTTP状态码判断，因为403 + 配额不足可能只是真的配额不足
+    // 检查错误消息中是否包含Token类型相关的关键词
+    const hasTokenTypeHint = isTokenTypeError(errorMessage) || 
+                             /token.*type|type.*token|mistake|令牌类型|类型.*错误/i.test(errorMessage);
+    
+    // 检查响应数据中是否有特殊错误代码提示Token类型问题
+    const responseCode = responseData?.code;
+    const hasTokenTypeCode = responseCode === 'TOKEN_TYPE_ERROR' || 
+                             responseCode === 'TOKEN_INVALID_TYPE' ||
+                             (typeof responseCode === 'string' && /token.*type|type.*error/i.test(responseCode));
+    
+    // 只有当明确有Token类型相关的提示时，才建议检查Token
+    const suggestCheckToken = hasTokenTypeHint || hasTokenTypeCode;
+    
     return createQuotaErrorResponse({
       suggestCheckToken,
       statusCode: httpStatus || 403
@@ -325,7 +338,7 @@ function analyzeYunwuApiError(response, responseData, httpStatus) {
   if (isChannelUnavailableError(errorMessage)) {
     return {
       success: false,
-      message: '当前令牌分组不支持可灵数字人。\n\n解决方案：\n1. 访问 https://yunwu.ai/token 进入令牌管理\n2. 新建令牌，选择包含「可灵Kling」或「数字人」的分组\n3. 使用新令牌重新测试',
+      message: '当前令牌分组不支持可灵数字人。\n\n请访问 https://yunwu.ai/token 检查令牌配置。',
       error: 'CHANNEL_UNAVAILABLE',
       errorCode: 'CHANNEL_UNAVAILABLE',
       helpUrl: 'https://yunwu.ai/token',
@@ -338,7 +351,7 @@ function analyzeYunwuApiError(response, responseData, httpStatus) {
       /请求失败|failed|error|如果多次出现|请联系客服/i.test(errorMessage))) {
     return {
       success: false,
-      message: `❌ API验证失败 (HTTP ${httpStatus})\n\n根据云雾AI使用日志，类型显示为"错误"，详情："请求失败"。\n\n可能的原因：\n1. ⚠️ Token类型为"mistake"（最常见原因，请优先检查）\n2. Token分组不支持可灵数字人服务\n3. API Key无效或已过期\n4. 服务器内部错误\n\n解决方案：\n1. 访问 https://yunwu.ai/token 检查令牌类型\n2. 如果Type为"mistake"（红色/粉色标签），请删除该令牌\n3. 创建新令牌，确保：\n   • 选择正确的分组（包含「可灵Kling」服务）\n   • Type应该显示为正常类型（不是"mistake"）\n4. 使用新令牌重新测试\n\n💡 提示：如果令牌类型显示为"mistake"，即使有余额也会导致请求失败。`,
+      message: `❌ API验证失败 (HTTP ${httpStatus})\n\n可能的原因：\n1. Token类型为"mistake"\n2. Token分组不支持可灵数字人服务\n3. API Key无效或已过期\n4. 服务器内部错误\n\n请访问 https://yunwu.ai/token 检查令牌配置。`,
       errorCode: 'API_ERROR',
       helpUrl: 'https://yunwu.ai/token',
       statusCode: httpStatus
@@ -1203,17 +1216,31 @@ router.post('/yunwu/digital-human', async (req, res) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
 
+    console.log('=== 开始发送请求到云雾API ===');
+    console.log('请求时间:', new Date().toISOString());
+    console.log('API端点:', 'https://yunwu.ai/kling/v1/videos/avatar/image2video');
+    console.log('部署环境:', process.env.NODE_ENV || 'development');
+    console.log('Callback URL:', requestBody.callback_url || '(空)');
+
     try {
+      const fetchStartTime = Date.now();
       response = await fetch('https://yunwu.ai/kling/v1/videos/avatar/image2video', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey.trim()}`,
           'Content-Type': 'application/json',
+          'User-Agent': 'AI-DigitalHuman-Platform/1.0',
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
+      const fetchDuration = Date.now() - fetchStartTime;
       clearTimeout(timeoutId);
+      
+      console.log('=== 云雾API请求已发送 ===');
+      console.log('请求耗时:', `${fetchDuration}ms`);
+      console.log('响应状态:', response.status, response.statusText);
+      console.log('响应URL:', response.url);
     } catch (fetchError) {
       clearTimeout(timeoutId);
       const errorInfo = handleFetchError(fetchError, '云雾数字人接口');
@@ -1356,7 +1383,26 @@ router.post('/yunwu/test', async (req, res) => {
       return res.json({ success: false, message: 'API Key 格式不正确（长度应在10-200字符之间）' });
     }
 
-    console.log('测试云雾API（仅验证数字人接口）:', { hasApiKey: true, keyLength: trimmedKey.length });
+    const deployUrl = process.env.CALLBACK_URL || process.env.DEPLOY_URL || '';
+    const testRequestBody = {
+      image: 'https://example.com/test.jpg', // 测试图片URL（预期会失败，但可以验证API Key）
+      audio_id: '', // 空字符串，符合规范
+      sound_file: '', // 空字符串，符合规范
+      prompt: '', // 空字符串，符合规范
+      mode: 'std',
+      callback_url: deployUrl,
+      external_task_id: '',
+    };
+
+    console.log('=== 云雾API测试请求详情 ===');
+    console.log('时间戳:', new Date().toISOString());
+    console.log('API端点:', 'https://yunwu.ai/kling/v1/videos/avatar/image2video');
+    console.log('请求方法: POST');
+    console.log('API Key长度:', trimmedKey.length);
+    console.log('API Key前缀:', trimmedKey.substring(0, 10) + '...');
+    console.log('Callback URL:', deployUrl || '(空)');
+    console.log('部署环境:', process.env.NODE_ENV || 'development');
+    console.log('请求体:', JSON.stringify(testRequestBody, null, 2));
 
     try {
       // 使用可灵 Kling 数字人 API 探针验证
@@ -1364,24 +1410,28 @@ router.post('/yunwu/test', async (req, res) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 20000); // 20秒超时
 
+      const fetchStartTime = Date.now();
+      console.log('开始发送请求到云雾API...');
+
       const avatarRes = await fetch('https://yunwu.ai/kling/v1/videos/avatar/image2video', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${trimmedKey}`,
           'Content-Type': 'application/json',
+          'User-Agent': 'AI-DigitalHuman-Platform/1.0',
         },
-        body: JSON.stringify({
-          image: 'https://example.com/test.jpg', // 测试图片URL（预期会失败，但可以验证API Key）
-          audio_id: '', // 空字符串，符合规范
-          sound_file: '', // 空字符串，符合规范
-          prompt: '', // 空字符串，符合规范
-          mode: 'std',
-          callback_url: process.env.CALLBACK_URL || process.env.DEPLOY_URL || '',
-          external_task_id: '',
-        }),
+        body: JSON.stringify(testRequestBody),
         signal: controller.signal,
       });
+      
+      const fetchDuration = Date.now() - fetchStartTime;
       clearTimeout(timeoutId);
+      
+      console.log('=== 云雾API请求完成 ===');
+      console.log('请求耗时:', `${fetchDuration}ms`);
+      console.log('响应状态:', avatarRes.status, avatarRes.statusText);
+      console.log('响应URL:', avatarRes.url);
+      console.log('响应类型:', avatarRes.type);
 
       // 解析响应（无论状态码）
       let avData = {};
@@ -1434,7 +1484,7 @@ router.post('/yunwu/test', async (req, res) => {
       if (isChannelUnavailableError(errorMessage)) {
         return res.json({
           success: false,
-          message: '当前令牌分组不支持可灵数字人。\n\n解决方案：\n1. 访问 https://yunwu.ai/token 进入令牌管理\n2. 新建令牌，选择包含「可灵Kling」或「数字人」的分组\n3. 使用新令牌重新测试',
+          message: '当前令牌分组不支持可灵数字人。\n\n请访问 https://yunwu.ai/token 检查令牌配置。',
         });
       }
 
@@ -1448,8 +1498,8 @@ router.post('/yunwu/test', async (req, res) => {
       if (avatarRes.status === 400) {
         // 400 状态码：如果错误是关于图片/URL/音频参数的，说明 Key 有效但测试参数不完整（这是预期的）
         // 这些错误表明API Key有效，接口可用，只是测试请求的参数不完整
-        if (/image|图片|url|invalid|格式|格式错误/i.test(avErrLower) ||
-            /audio|音频|sound_file|audio_id|时长无效|请提供有效的/i.test(avErrLower)) {
+        if (/image|图片|url|invalid|格式|格式错误/i.test(errorMsgLower) ||
+            /audio|音频|sound_file|audio_id|时长无效|请提供有效的/i.test(errorMsgLower)) {
           return res.json({
             success: true,
             message: 'API Key 验证通过！数字人接口可用，可正常创建数字人视频',
@@ -1458,7 +1508,7 @@ router.post('/yunwu/test', async (req, res) => {
         // 其他 400 错误
         return res.json({
           success: false,
-          message: avErrStr || '数字人接口返回 400，请检查请求参数或联系云雾AI支持',
+          message: errorMessage || '数字人接口返回 400，请检查请求参数或联系云雾AI支持',
         });
       }
 
@@ -1492,16 +1542,40 @@ router.post('/yunwu/test', async (req, res) => {
         message: errorMessage || `验证未通过 (HTTP ${avatarRes.status})，请确认 API Key 正确且具备可灵数字人权限。可在云雾AI 令牌管理 中新建含「可灵Kling」分组的令牌。`,
       });
     } catch (fetchError) {
+      console.error('=== 云雾API请求失败 ===');
+      console.error('错误时间:', new Date().toISOString());
+      console.error('错误类型:', fetchError.constructor.name);
+      console.error('错误名称:', fetchError.name);
+      console.error('错误消息:', fetchError.message);
+      console.error('错误堆栈:', fetchError.stack);
+      console.error('错误代码:', fetchError.code);
+      console.error('错误原因:', fetchError.cause);
+      
       const err = handleFetchError(fetchError, '云雾API');
+      console.error('处理后的错误信息:', err);
+      
       if (err.code === 'CONNECTION_REFUSED' || err.code === 'DNS_ERROR' || err.code === 'NETWORK_ERROR') {
         return res.json({
           success: false,
-          message: '无法连接云雾AI服务器，请检查网络或代理',
+          message: '无法连接云雾AI服务器，请检查网络或代理\n\n可能的原因：\n1. 部署环境无法访问 yunwu.ai\n2. 网络连接问题\n3. DNS解析失败\n\n建议：\n• 检查部署环境的网络配置\n• 确认防火墙规则\n• 查看服务器日志获取详细错误信息',
+          errorCode: 'NETWORK_ERROR',
+          debug: {
+            errorType: fetchError.constructor.name,
+            errorMessage: fetchError.message,
+            errorCode: fetchError.code
+          }
         });
       }
+      
       return res.json({
         success: false,
-        message: `验证失败：${err.message}`,
+        message: `验证失败：${err.message}\n\n如果部署后无法在云雾API日志中看到请求，可能是：\n1. 部署环境网络限制\n2. 请求被拦截\n3. DNS解析问题\n\n请检查部署环境的服务器日志获取详细错误信息。`,
+        errorCode: err.code || 'UNKNOWN',
+        debug: {
+          errorType: fetchError.constructor.name,
+          errorMessage: fetchError.message,
+          errorCode: fetchError.code
+        }
       });
     }
   } catch (error) {
@@ -1917,15 +1991,26 @@ router.post('/digital-human/create', async (req, res) => {
         const controller = new AbortController();
         timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
         
+        console.log('=== 开始发送请求到云雾API ===');
+        console.log('请求时间:', new Date().toISOString());
+        console.log('API端点:', apiUrl);
+        console.log('部署环境:', process.env.NODE_ENV || 'development');
+        console.log('Callback URL:', requestBody.callback_url || '(空)');
+        
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey.trim()}`,
             'Content-Type': 'application/json',
+            'User-Agent': 'AI-DigitalHuman-Platform/1.0',
           },
           body: JSON.stringify(requestBody),
           signal: controller.signal, // ✅ 使用AbortController实现超时
         });
+        
+        console.log('=== 云雾API请求已发送 ===');
+        console.log('响应状态:', response.status, response.statusText);
+        console.log('响应URL:', response.url);
         
         if (timeoutId) {
           clearTimeout(timeoutId);

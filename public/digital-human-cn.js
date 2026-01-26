@@ -1,20 +1,35 @@
 // ========== API 配置 ==========
-// API 基础 URL 配置（支持环境变量或默认使用相对路径）
+// API 基础 URL 配置（禁止使用localhost，统一指向线上地址）
 // 可以通过 localStorage 设置 'api_base_url' 来覆盖默认值
 function getApiBaseUrl() {
+  // 线上部署地址
+  const PRODUCTION_URL = 'https://ai-2-7gjx.onrender.com';
+  
   // 优先从 localStorage 读取配置
   try {
     const customBaseUrl = localStorage.getItem('api_base_url');
     if (customBaseUrl && customBaseUrl.trim()) {
-      // 移除末尾的斜杠
-      return customBaseUrl.trim().replace(/\/+$/, '');
+      const url = customBaseUrl.trim().replace(/\/+$/, '');
+      // 禁止使用localhost
+      if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
+        return url;
+      }
+      // 如果是localhost，使用线上地址
+      console.warn('检测到localhost地址，已自动切换到线上地址');
     }
   } catch (e) {
     console.warn('无法读取 api_base_url 配置:', e);
   }
   
-  // 默认使用相对路径（推荐，适用于同域部署）
-  return '';
+  // 检查当前页面是否是localhost
+  const currentOrigin = window.location.origin;
+  if (currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')) {
+    // 如果是localhost，使用线上地址
+    return PRODUCTION_URL;
+  }
+  
+  // 如果不是localhost，使用当前页面的origin
+  return currentOrigin;
 }
 
 // 构建完整的 API URL
@@ -1444,7 +1459,7 @@ function handleQuotaError(errorData) {
   alert(quotaMessage);
   
   if (suggestCheckToken) {
-    if (confirm('⚠️ 这很可能是Token类型问题导致的！\n\n是否现在打开令牌管理页面检查Token类型？\n\n如果Token的Type显示为"mistake"，请删除并创建新Token。')) {
+    if (confirm('⚠️ 这很可能是Token类型问题导致的！\n\n是否现在打开令牌管理页面检查Token类型？')) {
       window.open(helpUrl, '_blank');
     }
   } else {
@@ -1512,39 +1527,6 @@ function saveHeyGenConfig() {
   setTimeout(() => testHeyGenApi(), 500);
 }
 
-/**
- * 显示Token创建指导（避免type为"mistake"）
- */
-function showTokenCreationGuide() {
-  const guideMessage = `📋 如何创建正确的云雾AI Token（避免type为"mistake"）
-
-⚠️ 重要提示：创建Token时必须选择正确的分组，否则Token类型会显示为"mistake"！
-
-创建步骤：
-1. 访问 https://yunwu.ai/token 进入令牌管理页面
-2. 点击"创建新令牌"或"新建Token"
-3. 在"分组（Group）"选择中，必须选择包含以下服务的分组：
-   ✅ 「可灵Kling」服务
-   ✅ 「数字人」服务
-4. 确认Token的Type列显示为正常类型（不是"mistake"）
-5. 复制新创建的Token并粘贴到输入框
-
-❌ 常见错误：
-• 选择了不包含「可灵Kling」的分组
-• 选择了空分组或错误的分组
-• 没有检查Token的Type列
-
-✅ 正确做法：
-• 仔细查看分组说明，确保包含「可灵Kling」或「数字人」服务
-• 创建后立即检查Token的Type列
-• 如果Type显示为"mistake"（红色/粉色标签），请删除并重新创建
-
-💡 提示：如果Token类型为"mistake"，即使有余额也无法正常使用。`;
-
-  if (confirm(guideMessage + '\n\n是否现在打开令牌管理页面？')) {
-    window.open('https://yunwu.ai/token', '_blank');
-  }
-}
 
 // 保存云雾 API Key（增强版，包含预防性检查）
 async function saveYunwuConfig() {
@@ -1605,13 +1587,6 @@ async function saveYunwuConfig() {
         if (isTokenTypeErrorResponse(result)) {
           showStatus('yunwuStatus', '❌ Token类型错误（type为"mistake"）', 'error');
           handleTokenTypeError(result);
-          
-          // 显示创建指导
-          setTimeout(() => {
-            if (confirm('⚠️ 检测到Token类型为"mistake"！\n\n是否查看如何创建正确的Token？')) {
-              showTokenCreationGuide();
-            }
-          }, 1000);
           
           // 不保存错误的Token
           return;

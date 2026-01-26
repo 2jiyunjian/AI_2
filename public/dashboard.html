@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能体管理平台 - 用户前台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #1890ff;
+      --primary-dark: #096dd9;
+      --primary-light: #40a9ff;
+      --secondary: #722ed1;
+      --success: #52c41a;
+      --warning: #faad14;
+      --danger: #ff4d4f;
+      --sidebar-bg: #001529;
+      --sidebar-hover: #000c17;
+      --sidebar-active: #1890ff;
+      --content-bg: #f0f2f5;
+      --card-bg: #ffffff;
+      --text-primary: #262626;
+      --text-secondary: #8c8c8c;
+      --border-color: #f0f0f0;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      background: var(--content-bg);
+    }
+
+    /* 侧边栏 */
+    .sidebar {
+      width: 256px;
+      background: var(--sidebar-bg);
+      min-height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .logo-text {
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .logo-text span {
+      color: var(--primary-light);
+      font-size: 0.75rem;
+      display: block;
+      font-weight: 400;
+      margin-top: 2px;
+    }
+
+    /* 用户信息 */
+    .user-info {
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .user-details {
+      flex: 1;
+    }
+
+    .user-name {
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: rgba(82, 196, 26, 0.2);
+      border-radius: 10px;
+      color: #95de64;
+      font-size: 0.7rem;
+      margin-top: 4px;
+    }
+
+    /* 菜单导航 */
+    .nav-menu {
+      flex: 1;
+      padding: 8px 0;
+      overflow-y: auto;
+    }
+
+    .menu-item {
+      position: relative;
+    }
+
+    .menu-link {
+      display: flex;
+      align-items: center;
+      padding: 12px 24px;
+      color: rgba(255, 255, 255, 0.65);
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+
+    .menu-link:hover {
+      color: white;
+    }
+
+    .menu-link.active {
+      background: var(--sidebar-active);
+      color: white;
+    }
+
+    .menu-link.parent {
+      font-weight: 500;
+    }
+
+    .menu-icon {
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .menu-text {
+      flex: 1;
+    }
+
+    .menu-arrow {
+      transition: transform 0.3s ease;
+      font-size: 0.7rem;
+      opacity: 0.5;
+    }
+
+    .menu-item.open .menu-arrow {
+      transform: rotate(90deg);
+    }
+
+    /* 功能标签 */
+    .menu-tag {
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      margin-left: 8px;
+    }
+
+    .menu-tag.blue { background: rgba(24, 144, 255, 0.2); color: #69c0ff; }
+    .menu-tag.green { background: rgba(82, 196, 26, 0.2); color: #95de64; }
+    .menu-tag.orange { background: rgba(250, 173, 20, 0.2); color: #ffc53d; }
+    .menu-tag.purple { background: rgba(114, 46, 209, 0.2); color: #b37feb; }
+    .menu-tag.red { background: rgba(255, 77, 79, 0.2); color: #ff7875; }
+
+    /* 二级菜单 */
+    .submenu {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .menu-item.open .submenu {
+      max-height: 400px;
+    }
+
+    .submenu-link {
+      display: flex;
+      align-items: center;
+      padding: 10px 24px 10px 50px;
+      color: rgba(255, 255, 255, 0.65);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .submenu-link:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .submenu-link.active {
+      color: var(--primary-light);
+      background: rgba(24, 144, 255, 0.1);
+    }
+
+    .submenu-link::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      margin-right: 10px;
+      opacity: 0.5;
+    }
+
+    .submenu-link:hover::before,
+    .submenu-link.active::before {
+      opacity: 1;
+    }
+
+    .submenu-text {
+      flex: 1;
+    }
+
+    /* 退出按钮 */
+    .sidebar-footer {
+      padding: 16px 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .logout-btn {
+      width: 100%;
+      padding: 10px;
+      background: rgba(255, 77, 79, 0.1);
+      border: 1px solid rgba(255, 77, 79, 0.3);
+      border-radius: 6px;
+      color: #ff7875;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+
+    .logout-btn:hover {
+      background: rgba(255, 77, 79, 0.2);
+    }
+
+    /* 主内容区 */
+    .main-content {
+      flex: 1;
+      margin-left: 256px;
+      min-height: 100vh;
+    }
+
+    /* 顶部导航 */
+    .top-header {
+      background: var(--card-bg);
+      padding: 0 24px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .breadcrumb-item {
+      color: var(--text-primary);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: background 0.2s ease;
+    }
+
+    .header-btn:hover {
+      background: var(--content-bg);
+    }
+
+    /* 内容区域 */
+    .content-area {
+      padding: 24px;
+    }
+
+    .welcome-banner {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 8px;
+      padding: 32px;
+      color: white;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .welcome-banner::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 200px;
+      height: 200px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+    }
+
+    .welcome-banner h1 {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .welcome-banner p {
+      opacity: 0.9;
+      font-size: 0.9rem;
+      position: relative;
+    }
+
+    /* 统计卡片 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .stat-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .stat-card-title {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .stat-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .stat-card-icon.blue { background: rgba(24, 144, 255, 0.1); }
+    .stat-card-icon.green { background: rgba(82, 196, 26, 0.1); }
+    .stat-card-icon.purple { background: rgba(114, 46, 209, 0.1); }
+    .stat-card-icon.orange { background: rgba(250, 173, 20, 0.1); }
+
+    .stat-card-value {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* 内容卡片 */
+    .content-card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 24px;
+    }
+
+    .content-card-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .content-card-title {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .content-card-body {
+      padding: 24px;
+    }
+
+    /* 快捷入口 */
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .quick-item {
+      padding: 24px 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .quick-item:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .quick-item-icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+    }
+
+    .quick-item-text {
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .quick-item-desc {
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 1200px) {
+      .stats-grid, .quick-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      .main-content {
+        margin-left: 0;
+      }
+      .stats-grid, .quick-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">🤖</div>
+      <div class="logo-text">
+        智能体管理平台
+        <span>用户前台</span>
+      </div>
+    </div>
+
+    <div class="user-info">
+      <div class="user-avatar" id="userAvatar">U</div>
+      <div class="user-details">
+        <div class="user-name" id="userName">用户</div>
+        <div class="role-badge">普通用户</div>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <!-- AI数字员工 -->
+      <div class="menu-item open">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">🤖</span>
+          <span class="menu-text">AI数字员工</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link active" href="page.html?page=my-digital-worker">
+            <span class="submenu-text">我的数字员工</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=content-topic">
+            <span class="submenu-text">内容选题</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=copywriting">
+            <span class="submenu-text">文案编辑</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=video-edit">
+            <span class="submenu-text">视频剪辑</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=video-publish">
+            <span class="submenu-text">视频发布</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=account-bindning">
+            <span class="submenu-text">账号授权</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=job-market">
+            <span class="submenu-text">大招聘市场</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 智能体市场 -->
+      <div class="menu-item">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">🏪</span>
+          <span class="menu-text">智能体市场</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link" href="page.html?page=official-agent">
+            <span class="submenu-text">官方智能体</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=user-agent">
+            <span class="submenu-text">用户智能体</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 数字人 -->
+      <div class="menu-item">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">👤</span>
+          <span class="menu-text">数字人</span>
+          <span class="menu-tag red">NEW</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link" href="digital-human-cn.html">
+            <span class="submenu-text">🇨🇳 国内数字人</span>
+            <span class="menu-tag blue">国产</span>
+          </a>
+          <a class="submenu-link" href="digital-human-intl.html">
+            <span class="submenu-text">🌍 国际数字人</span>
+            <span class="menu-tag purple">Global</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 工作流市场 -->
+      <div class="menu-item">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">⚡</span>
+          <span class="menu-text">工作流市场</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link" href="page.html?page=official-workflow">
+            <span class="submenu-text">官方工作流</span>
+            <span class="menu-tag purple">工作流</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=user-workflow">
+            <span class="submenu-text">用户工作流</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 我的智能体 -->
+      <div class="menu-item">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">🎯</span>
+          <span class="menu-text">我的智能体</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link" href="page.html?page=my-purchased-agent">
+            <span class="submenu-text">我购买的</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=my-created-agent">
+            <span class="submenu-text">我创建的</span>
+            <span class="menu-tag green">创建智能体</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 我的工作流 -->
+      <div class="menu-item">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">🔧</span>
+          <span class="menu-text">我的工作流</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link" href="page.html?page=my-purchased-workflow">
+            <span class="submenu-text">我购买的</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=my-created-workflow">
+            <span class="submenu-text">我创建的</span>
+            <span class="menu-tag purple">创建工作流</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 我的作品表 -->
+      <div class="menu-item">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">📝</span>
+          <span class="menu-text">我的作品表</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link" href="page.html?page=industry-category">
+            <span class="submenu-text">行业分类</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=custom-category">
+            <span class="submenu-text">自定义类目</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=my-works">
+            <span class="submenu-text">我的作品</span>
+            <span class="menu-tag blue">作品</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 个人中心 -->
+      <div class="menu-item">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">👤</span>
+          <span class="menu-text">个人中心</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link" href="page.html?page=vip-purchase">
+            <span class="submenu-text">会员购买</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=token-recharge">
+            <span class="submenu-text">算力豆充值</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=my-orders">
+            <span class="submenu-text">我的订单</span>
+          </a>
+          <a class="submenu-link" href="page.html?page=my-income">
+            <span class="submenu-text">我的收入</span>
+            <span class="menu-tag orange">提现</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="logout()">
+        <span>🚪</span>
+        <span>退出登录</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- 主内容区 -->
+  <main class="main-content">
+    <header class="top-header">
+      <div class="breadcrumb">
+        <span>🏠</span>
+        <span>/</span>
+        <span>智能体市场</span>
+        <span>/</span>
+        <span class="breadcrumb-item">官方智能体</span>
+      </div>
+      <div class="header-actions">
+        <button class="header-btn" title="搜索">🔍</button>
+        <button class="header-btn" title="消息">🔔</button>
+        <button class="header-btn" title="设置">⚙️</button>
+      </div>
+    </header>
+
+    <div class="content-area">
+      <div class="welcome-banner">
+        <h1>👋 欢迎回来，<span id="welcomeName">用户</span>！</h1>
+        <p>探索智能体市场，发现更多AI能力</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">我的智能体</span>
+            <div class="stat-card-icon blue">🤖</div>
+          </div>
+          <div class="stat-card-value">12</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">我的工作流</span>
+            <div class="stat-card-icon purple">⚡</div>
+          </div>
+          <div class="stat-card-value">8</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">算力豆余额</span>
+            <div class="stat-card-icon orange">🪙</div>
+          </div>
+          <div class="stat-card-value">5,680</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">累计收入</span>
+            <div class="stat-card-icon green">💰</div>
+          </div>
+          <div class="stat-card-value">¥1,280</div>
+        </div>
+      </div>
+
+      <div class="content-card">
+        <div class="content-card-header">
+          <span class="content-card-title">快捷入口</span>
+        </div>
+        <div class="content-card-body">
+          <div class="quick-grid">
+            <div class="quick-item">
+              <div class="quick-item-icon">🤖</div>
+              <div class="quick-item-text">创建智能体</div>
+              <div class="quick-item-desc">打造专属AI助手</div>
+            </div>
+            <div class="quick-item">
+              <div class="quick-item-icon">⚡</div>
+              <div class="quick-item-text">创建工作流</div>
+              <div class="quick-item-desc">自动化任务流程</div>
+            </div>
+            <div class="quick-item">
+              <div class="quick-item-icon">🏪</div>
+              <div class="quick-item-text">逛逛市场</div>
+              <div class="quick-item-desc">发现优质智能体</div>
+            </div>
+            <div class="quick-item">
+              <div class="quick-item-icon">🪙</div>
+              <div class="quick-item-text">充值算力豆</div>
+              <div class="quick-item-desc">获取更多算力</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // 检查登录状态
+    const user = JSON.parse(sessionStorage.getItem('user'));
+    
+    if (!user || user.role !== 'user') {
+      window.location.href = '/';
+    } else {
+      document.getElementById('userName').textContent = user.username;
+      document.getElementById('welcomeName').textContent = user.username;
+      document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+    }
+
+    // 切换子菜单
+    function toggleSubmenu(element) {
+      const menuItem = element.parentElement;
+      menuItem.classList.toggle('open');
+    }
+
+    // 退出登录
+    function logout() {
+      sessionStorage.removeItem('user');
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>

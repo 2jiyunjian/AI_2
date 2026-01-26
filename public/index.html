@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能体管理平台 - 登录</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #1890ff;
+      --primary-dark: #096dd9;
+      --primary-light: #40a9ff;
+      --secondary: #722ed1;
+      --success: #52c41a;
+      --warning: #faad14;
+      --danger: #ff4d4f;
+      --dark: #001529;
+      --glass-bg: rgba(255, 255, 255, 0.1);
+      --glass-border: rgba(255, 255, 255, 0.2);
+    }
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #001529 0%, #002140 50%, #003a70 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 动态背景效果 */
+    body::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(24, 144, 255, 0.2) 0%, transparent 40%),
+        radial-gradient(circle at 80% 20%, rgba(114, 46, 209, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(82, 196, 26, 0.1) 0%, transparent 30%);
+      animation: aurora 20s ease-in-out infinite;
+    }
+
+    @keyframes aurora {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(2%, 2%) rotate(1deg); }
+      66% { transform: translate(-1%, 1%) rotate(-1deg); }
+    }
+
+    /* 浮动图形 */
+    .floating-shapes {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .shape {
+      position: absolute;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(24, 144, 255, 0.1), rgba(114, 46, 209, 0.05));
+      animation: float 15s ease-in-out infinite;
+    }
+
+    .shape:nth-child(1) {
+      width: 100px;
+      height: 100px;
+      top: 10%;
+      left: 10%;
+      animation-delay: 0s;
+    }
+
+    .shape:nth-child(2) {
+      width: 150px;
+      height: 150px;
+      top: 60%;
+      right: 10%;
+      animation-delay: -5s;
+    }
+
+    .shape:nth-child(3) {
+      width: 80px;
+      height: 80px;
+      bottom: 15%;
+      left: 15%;
+      animation-delay: -10s;
+    }
+
+    .shape:nth-child(4) {
+      width: 120px;
+      height: 120px;
+      top: 25%;
+      right: 20%;
+      animation-delay: -7s;
+      border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-30px) rotate(180deg); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+
+    .auth-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 40px 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 2rem;
+      box-shadow: 0 8px 24px rgba(24, 144, 255, 0.3);
+    }
+
+    .logo h1 {
+      color: white;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .logo p {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.85rem;
+      margin-top: 8px;
+    }
+
+    /* 角色切换标签 */
+    .role-tabs {
+      display: flex;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+
+    .role-tab {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+
+    .role-tab.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .role-tab:hover:not(.active) {
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* 角色指示器 */
+    .role-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px;
+      background: rgba(82, 196, 26, 0.15);
+      border: 1px solid rgba(82, 196, 26, 0.3);
+      border-radius: 8px;
+      margin-bottom: 20px;
+      color: #95de64;
+      font-size: 0.85rem;
+    }
+
+    .role-indicator.admin {
+      background: rgba(255, 77, 79, 0.15);
+      border-color: rgba(255, 77, 79, 0.3);
+      color: #ff7875;
+    }
+
+    /* 表单切换标签 */
+    .form-tabs {
+      display: flex;
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .form-tab {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.3s ease;
+      font-family: inherit;
+    }
+
+    .form-tab.active {
+      color: white;
+    }
+
+    .form-tab::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--primary);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .form-tab.active::after {
+      transform: scaleX(1);
+    }
+
+    /* 表单样式 */
+    .form-container {
+      position: relative;
+    }
+
+    .form {
+      display: none;
+    }
+
+    .form.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .input-wrapper .input-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1rem;
+      opacity: 0.5;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 12px 12px 40px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: white;
+      font-size: 0.9rem;
+      font-family: inherit;
+      transition: all 0.3s ease;
+    }
+
+    .form-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(0, 0, 0, 0.4);
+      box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.2);
+    }
+
+    /* 密钥输入框特殊样式 */
+    .admin-key-group {
+      display: none;
+    }
+
+    .admin-key-group.show {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .admin-key-group .form-input {
+      border-color: rgba(255, 77, 79, 0.3);
+    }
+
+    .admin-key-group .form-input:focus {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.2);
+    }
+
+    .admin-key-hint {
+      margin-top: 6px;
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: inherit;
+      margin-top: 8px;
+    }
+
+    .submit-btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    .submit-btn.admin-btn {
+      background: linear-gradient(135deg, var(--danger), #d32029);
+    }
+
+    .submit-btn.admin-btn:hover {
+      box-shadow: 0 4px 12px rgba(255, 77, 79, 0.4);
+    }
+
+    /* 消息提示 */
+    .message {
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.85rem;
+      display: none;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.show {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .message.success {
+      background: rgba(82, 196, 26, 0.15);
+      border: 1px solid rgba(82, 196, 26, 0.3);
+      color: #95de64;
+    }
+
+    .message.error {
+      background: rgba(255, 77, 79, 0.15);
+      border: 1px solid rgba(255, 77, 79, 0.3);
+      color: #ff7875;
+    }
+
+    /* Loading状态 */
+    .submit-btn.loading {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .submit-btn.loading::after {
+      content: '';
+      width: 16px;
+      height: 16px;
+      border: 2px solid transparent;
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 响应式 */
+    @media (max-width: 480px) {
+      .auth-card {
+        padding: 32px 24px;
+      }
+
+      .logo h1 {
+        font-size: 1.3rem;
+      }
+
+      .role-tab {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="floating-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+  </div>
+
+  <div class="container">
+    <div class="auth-card">
+      <div class="logo">
+        <div class="logo-icon">🤖</div>
+        <h1>智能体管理平台</h1>
+        <p>AI应用管理与创作平台</p>
+      </div>
+
+      <!-- 角色选择标签 -->
+      <div class="role-tabs">
+        <button class="role-tab active" data-role="user">
+          👤 普通用户
+        </button>
+        <button class="role-tab" data-role="admin">
+          🛡️ 管理员
+        </button>
+      </div>
+
+      <!-- 当前角色指示 -->
+      <div class="role-indicator" id="roleIndicator">
+        <span>👤 当前身份：普通用户</span>
+      </div>
+
+      <!-- 登录/注册切换标签 -->
+      <div class="form-tabs">
+        <button class="form-tab active" data-form="login">登录</button>
+        <button class="form-tab" data-form="register">注册</button>
+      </div>
+
+      <!-- 消息提示 -->
+      <div class="message" id="message">
+        <span id="messageText"></span>
+      </div>
+
+      <div class="form-container">
+        <!-- 登录表单 -->
+        <form class="form active" id="loginForm">
+          <div class="form-group">
+            <label>用户名</label>
+            <div class="input-wrapper">
+              <span class="input-icon">👤</span>
+              <input type="text" class="form-input" id="loginUsername" placeholder="请输入用户名" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>密码</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input type="password" class="form-input" id="loginPassword" placeholder="请输入密码" required>
+            </div>
+          </div>
+          <button type="submit" class="submit-btn" id="loginBtn">登 录</button>
+        </form>
+
+        <!-- 注册表单 -->
+        <form class="form" id="registerForm">
+          <div class="form-group">
+            <label>用户名</label>
+            <div class="input-wrapper">
+              <span class="input-icon">👤</span>
+              <input type="text" class="form-input" id="registerUsername" placeholder="至少3个字符" required minlength="3">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>密码</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input type="password" class="form-input" id="registerPassword" placeholder="至少6个字符" required minlength="6">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>确认密码</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input type="password" class="form-input" id="registerConfirmPassword" placeholder="请再次输入密码" required>
+            </div>
+          </div>
+          <!-- 管理员密钥输入（仅管理员注册时显示） -->
+          <div class="form-group admin-key-group" id="adminKeyGroup">
+            <label>🔑 管理员密钥</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🗝️</span>
+              <input type="password" class="form-input" id="adminKey" placeholder="请输入管理员授权密钥">
+            </div>
+            <div class="admin-key-hint">* 注册管理员账号需要授权密钥</div>
+          </div>
+          <button type="submit" class="submit-btn" id="registerBtn">注 册</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 管理员注册密钥
+    const ADMIN_SECRET_KEY = '666666';
+    
+    // 当前选择的角色
+    let currentRole = 'user';
+
+    // DOM元素
+    const roleTabs = document.querySelectorAll('.role-tab');
+    const formTabs = document.querySelectorAll('.form-tab');
+    const forms = document.querySelectorAll('.form');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const messageEl = document.getElementById('message');
+    const messageText = document.getElementById('messageText');
+    const roleIndicator = document.getElementById('roleIndicator');
+    const adminKeyGroup = document.getElementById('adminKeyGroup');
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+
+    // 更新按钮样式
+    function updateButtonStyle() {
+      if (currentRole === 'admin') {
+        loginBtn.classList.add('admin-btn');
+        registerBtn.classList.add('admin-btn');
+      } else {
+        loginBtn.classList.remove('admin-btn');
+        registerBtn.classList.remove('admin-btn');
+      }
+    }
+
+    // 角色切换
+    roleTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        roleTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentRole = tab.dataset.role;
+        
+        // 更新角色指示器
+        if (currentRole === 'admin') {
+          roleIndicator.classList.add('admin');
+          roleIndicator.innerHTML = '<span>🛡️ 当前身份：管理员</span>';
+          adminKeyGroup.classList.add('show');
+        } else {
+          roleIndicator.classList.remove('admin');
+          roleIndicator.innerHTML = '<span>👤 当前身份：普通用户</span>';
+          adminKeyGroup.classList.remove('show');
+        }
+        
+        updateButtonStyle();
+        hideMessage();
+      });
+    });
+
+    // 表单切换
+    formTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        formTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        forms.forEach(form => {
+          form.classList.remove('active');
+          if (form.id === tab.dataset.form + 'Form') {
+            form.classList.add('active');
+          }
+        });
+        
+        hideMessage();
+      });
+    });
+
+    // 显示消息
+    function showMessage(text, type) {
+      messageText.textContent = (type === 'success' ? '✅ ' : '❌ ') + text;
+      messageEl.className = `message show ${type}`;
+    }
+
+    // 隐藏消息
+    function hideMessage() {
+      messageEl.classList.remove('show');
+    }
+
+    // 登录处理
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const submitBtn = loginForm.querySelector('.submit-btn');
+      
+      submitBtn.classList.add('loading');
+      submitBtn.textContent = '登录中';
+      
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, role: currentRole })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showMessage('登录成功！正在跳转...', 'success');
+          sessionStorage.setItem('user', JSON.stringify(data.user));
+          setTimeout(() => {
+            if (currentRole === 'admin') {
+              window.location.href = '/admin.html';
+            } else {
+              window.location.href = '/dashboard.html';
+            }
+          }, 1000);
+        } else {
+          showMessage(data.message, 'error');
+        }
+      } catch (error) {
+        showMessage('网络错误，请稍后重试', 'error');
+      } finally {
+        submitBtn.classList.remove('loading');
+        submitBtn.textContent = '登 录';
+      }
+    });
+
+    // 注册处理
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('registerUsername').value.trim();
+      const password = document.getElementById('registerPassword').value;
+      const confirmPassword = document.getElementById('registerConfirmPassword').value;
+      const adminKey = document.getElementById('adminKey').value;
+      const submitBtn = registerForm.querySelector('.submit-btn');
+      
+      // 密码确认
+      if (password !== confirmPassword) {
+        showMessage('两次输入的密码不一致', 'error');
+        return;
+      }
+      
+      // 管理员密钥验证
+      if (currentRole === 'admin') {
+        if (!adminKey) {
+          showMessage('请输入管理员授权密钥', 'error');
+          return;
+        }
+        if (adminKey !== ADMIN_SECRET_KEY) {
+          showMessage('管理员密钥错误，无法注册管理员账号', 'error');
+          return;
+        }
+      }
+      
+      submitBtn.classList.add('loading');
+      submitBtn.textContent = '注册中';
+      
+      try {
+        const response = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, role: currentRole })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showMessage('注册成功！请登录', 'success');
+          registerForm.reset();
+          setTimeout(() => {
+            formTabs[0].click();
+          }, 1500);
+        } else {
+          showMessage(data.message, 'error');
+        }
+      } catch (error) {
+        showMessage('网络错误，请稍后重试', 'error');
+      } finally {
+        submitBtn.classList.remove('loading');
+        submitBtn.textContent = '注 册';
+      }
+    });
+
+    // 初始化按钮样式
+    updateButtonStyle();
+  </script>
+</body>
+</html>

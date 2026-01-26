@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>国内数字人平台 - AI数字人管理系统</title>
+  <link rel="stylesheet" href="digital-human-cn.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <button class="back-btn" onclick="goBack()">←</button>
+      <div class="logo">
+        <span class="logo-icon">🇨🇳</span>
+        <span class="logo-text">国内数字人平台</span>
+      </div>
+    </div>
+  </header>
+  
+  <!-- 侧边栏菜单 -->
+  <aside class="sidebar-menu">
+    <div class="menu-item">
+      <a class="menu-link active" href="javascript:void(0)" onclick="switchMenu('create')" data-menu="create">
+        <span class="menu-icon">✨</span>
+        <span class="menu-text">创建数字人</span>
+      </a>
+    </div>
+    <div class="menu-item">
+      <a class="menu-link" href="javascript:void(0)" onclick="switchMenu('manage')" data-menu="manage">
+        <span class="menu-icon">👥</span>
+        <span class="menu-text">数字人管理</span>
+      </a>
+    </div>
+    <div class="menu-item">
+      <a class="menu-link" href="javascript:void(0)" onclick="switchMenu('works')" data-menu="works">
+        <span class="menu-icon">🎬</span>
+        <span class="menu-text">作品管理</span>
+      </a>
+    </div>
+    <div class="menu-item">
+      <a class="menu-link" href="javascript:void(0)" onclick="switchMenu('recite')" data-menu="recite">
+        <span class="menu-icon">📖</span>
+        <span class="menu-text">诵读文案</span>
+      </a>
+    </div>
+    <div class="menu-item">
+      <a class="menu-link" href="javascript:void(0)" onclick="switchMenu('promote')" data-menu="promote">
+        <span class="menu-icon">🛒</span>
+        <span class="menu-text">卖货推送</span>
+      </a>
+    </div>
+  </aside>
+  
+  <main class="main-content">
+    <!-- 创建数字人内容 -->
+    <div class="content-panel" id="createPanel">
+      <div class="page-title">
+        <h1>✨ 创建数字人</h1>
+        <p>三步创建专属数字人，让AI为您代言</p>
+      </div>
+      
+      <!-- 步骤指示器 -->
+      <div class="steps-indicator">
+        <div class="step-item active" data-step="1">
+          <div class="step-number">1</div>
+          <div class="step-label">接入API</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item" data-step="2">
+          <div class="step-number">2</div>
+          <div class="step-label">选择形象</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item" data-step="3">
+          <div class="step-number">3</div>
+          <div class="step-label">配置生成</div>
+        </div>
+      </div>
+    
+    <!-- 步骤1：接入API -->
+    <div class="step-content active" id="step1Content">
+      <div class="step-card">
+        <h3>🔑 接入语音API <span class="step-badge">步骤 1/3</span></h3>
+        
+        <div class="section-title">选择数字人平台</div>
+        <div class="platform-tabs" style="display: flex; margin-bottom: 24px;">
+          <div class="platform-tab active" data-platform="heygen">
+            <span class="icon">🎬</span>
+            <span>HeyGen</span>
+            <span class="tag" style="background: var(--primary);">AI数字人</span>
+          </div>
+          <div class="platform-tab" data-platform="yunwu">
+            <span class="icon">☁️</span>
+            <span>云雾数字人</span>
+            <span class="tag" style="background: var(--primary-light);">国内API</span>
+          </div>
+        </div>
+        
+        <!-- API配置区域 -->
+        <div class="api-config-section" id="apiConfigSection" style="margin-bottom: 32px;">
+          <!-- HeyGen配置 -->
+          <div class="api-config" id="heygenConfig">
+            <h3>🎬 HeyGen AI数字人配置 <span class="badge">需要配置</span></h3>
+            <div class="api-form">
+              <div class="form-group">
+                <label>API Key</label>
+                <input type="password" id="heygenApiKey" placeholder="输入HeyGen API Key">
+              </div>
+            </div>
+            <div class="api-actions">
+              <button class="api-btn primary" onclick="saveHeyGenConfig()">💾 保存配置</button>
+              <button class="api-btn success" onclick="testHeyGenApi()">🧪 测试连接</button>
+            </div>
+            <div id="heygenStatus"></div>
+            <div class="api-help">
+              <strong>📖 获取步骤：</strong><br>
+              1. 访问 <a href="https://www.heygen.com" target="_blank" rel="noopener">HeyGen官网</a> 注册账号<br>
+              2. 进入控制台 → API设置<br>
+              3. 创建 API Key 并复制<br>
+              <br>
+              <strong>✨ 功能特点：</strong><br>
+              • AI驱动的数字人视频生成<br>
+              • 支持多语言语音合成<br>
+              • 高质量视频输出<br>
+              • 丰富的数字人形象库<br>
+              💡 提供免费试用额度
+            </div>
+          </div>
+
+          <!-- 云雾AI 配置（既可用于文案模型，也可用于云雾数字人） -->
+          <div class="api-config hidden" id="yunwuConfig" style="margin-top: 24px;">
+            <h3>☁️ 云雾AI 接入配置 <span class="badge" style="background: #52c41a;">需要配置</span></h3>
+            <div class="api-form">
+              <div class="form-group">
+                <label>云雾 API Key</label>
+                <input type="password" id="yunwuApiKey" placeholder="输入云雾 API Key（用于创建数字人视频）">
+              </div>
+            </div>
+            <div class="api-actions">
+              <button class="api-btn primary" onclick="saveYunwuConfig()">💾 保存配置</button>
+              <button class="api-btn success" onclick="testYunwuApi()">🧪 测试连接</button>
+            </div>
+            <div id="yunwuStatus"></div>
+            
+            <div class="api-help">
+              <strong>📖 获取步骤：</strong><br>
+              1. 访问 <a href="https://yunwu.ai" target="_blank" rel="noopener">云雾AI官网</a> 注册账号<br>
+              2. 登录后进入「令牌管理」页面<br>
+              3. 创建 Token，并复制作为 API Key 使用<br>
+              <br>
+              <strong>✨ 用途说明：</strong><br>
+              • 用于调用「可灵 Kling 数字人」API 生成数字人视频<br>
+              • 支持图片转视频的数字人生成<br>
+              • 适合国内环境下的数字人生成服务
+            </div>
+          </div>
+        </div>
+        
+        <div class="step-actions">
+          <div></div>
+          <button class="step-btn next" onclick="goToStep(2)">下一步：选择形象 →</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 步骤2：选择形象 -->
+    <div class="step-content" id="step2Content">
+      <div class="step-card">
+        <h3>👤 选择数字人形象 <span class="step-badge">步骤 2/3</span></h3>
+        
+        <!-- 重要提示：此步骤为可选 -->
+        <div class="platform-notice" style="background: linear-gradient(135deg, rgba(24, 144, 255, 0.15) 0%, rgba(114, 46, 209, 0.1) 100%); border: 2px solid var(--primary); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+          <div style="display: flex; align-items: flex-start; gap: 16px;">
+            <div style="font-size: 2rem; line-height: 1;">✨</div>
+            <div style="flex: 1;" id="platformNoticeContent">
+              <div style="font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 8px;">
+                HeyGen 平台说明
+              </div>
+              <div style="font-size: 0.95rem; color: var(--text-primary); line-height: 1.8;">
+                <strong>系统将自动从 HeyGen 平台选择数字人形象进行视频生成。</strong><br>
+                • HeyGen 平台提供 1287+ 种数字人形象供您选择<br>
+                • 您可以跳过此步骤，直接进入下一步配置生成<br>
+                • 下方的上传和录制功能为<strong style="color: var(--primary);">可选操作</strong>，仅作为参考
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 形象选择方式切换 -->
+        <div style="margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+            <div class="section-title" style="margin: 0;">选择形象方式</div>
+            <div style="background: rgba(24, 144, 255, 0.08); border: 1px solid var(--primary); border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap;">
+              💡 提示：请选择一种方式，不能同时使用
+            </div>
+          </div>
+          <div class="tab-buttons" style="margin-bottom: 20px;">
+            <button class="tab-button active" id="avatarModeTemplate" onclick="switchAvatarMode('template')">🎨 选择模板</button>
+            <button class="tab-button" id="avatarModeUpload" onclick="switchAvatarMode('upload')" style="display: none;">📎 上传参考文件</button>
+            <button class="tab-button" id="avatarModeRecord" onclick="switchAvatarMode('record')" style="display: none;">🎬 实时录制</button>
+          </div>
+          <div id="heygenModeNotice" style="display: none; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 16px; font-size: 0.9rem; color: var(--text-secondary);">
+            <strong style="color: var(--warning);">💡 提示：</strong>HeyGen 平台仅支持从模板选择数字人形象，不支持上传视频/音频文件或实时录制。如需使用自定义音频，请通过 HeyGen 平台的 Upload Asset API 上传后使用 asset_id。
+          </div>
+        </div>
+        
+        <!-- 选择模板区域 -->
+        <div id="templateSelectionSection" style="margin-bottom: 32px;">
+          <!-- 数字人模板选择 -->
+          <div style="margin-bottom: 32px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div class="section-title" style="margin: 0;">选择数字人模板</div>
+              <button class="btn secondary" id="refreshAvatarBtn" onclick="loadHeyGenAvatars('create')" style="padding: 8px 16px; font-size: 0.85rem; position: relative;">
+                <span id="refreshAvatarIcon">🔄</span>
+                <span id="refreshAvatarText">刷新模板</span>
+              </button>
+            </div>
+            <div id="avatarTemplateGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; min-height: 200px; max-height: 600px; overflow-y: auto; padding: 8px;">
+              <div id="avatarLoadingState" style="text-align: center; color: var(--text-secondary); padding: 40px; grid-column: 1 / -1;">
+                <div style="font-size: 2.5rem; margin-bottom: 12px; animation: pulse 2s infinite;">⏳</div>
+                <div style="font-size: 0.9rem; margin-bottom: 8px;">正在加载模板...</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7;">请稍候，正在从 HeyGen 平台获取数字人模板</div>
+              </div>
+            </div>
+            
+            <!-- 模板视频预览区域 -->
+            <div id="templatePreviewSection" style="display: none; margin-top: 24px; margin-bottom: 24px;">
+              <div class="section-title">模板预览</div>
+              <div style="background: var(--bg-secondary); border-radius: 12px; padding: 20px; border: 2px solid var(--primary);">
+                <div id="templatePreviewContent" style="text-align: center; color: var(--text-secondary);">
+                  <div style="font-size: 2rem; margin-bottom: 12px;">⏳</div>
+                  <div>正在加载预览...</div>
+                </div>
+              </div>
+            </div>
+            <!-- 加载更多按钮 -->
+            <div id="loadMoreContainer" style="text-align: center; margin-bottom: 16px; display: none;">
+              <button class="btn secondary" id="loadMoreBtn" onclick="loadMoreAvatars('create')" style="padding: 10px 24px;">
+                <span id="loadMoreText">加载更多模板</span>
+                <span id="loadMoreIcon" style="margin-left: 8px;">⬇️</span>
+              </button>
+            </div>
+            <!-- 分页控制 -->
+            <div id="paginationContainer" style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 16px; display: none;">
+              <button class="btn secondary" id="prevPageBtn" onclick="changePage(-1)" style="padding: 8px 16px; font-size: 0.85rem;" disabled>上一页</button>
+              <span id="pageInfo" style="font-size: 0.9rem; color: var(--text-secondary); padding: 0 16px;">第 1 页，共 1 页</span>
+              <button class="btn secondary" id="nextPageBtn" onclick="changePage(1)" style="padding: 8px 16px; font-size: 0.85rem;">下一页</button>
+            </div>
+            <div style="background: rgba(24, 144, 255, 0.08); border: 1px solid var(--primary); border-radius: 12px; padding: 12px; font-size: 0.9rem; color: var(--text-secondary); text-align: center;">
+              💡 提示：选择一个模板后，系统将使用该数字人形象生成视频。您也可以跳过选择，系统将自动选择默认形象。
+            </div>
+          </div>
+        </div>
+        
+        <!-- 上传参考文件区域 -->
+        <div id="uploadReferenceSection" style="display: none; margin-bottom: 32px;">
+          <div id="uploadSectionHint" style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+              <span style="font-size: 1.2rem;">⚠️</span>
+              <strong style="color: var(--warning);">重要提示</strong>
+            </div>
+            <div id="uploadSectionHintText" style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
+              上传参考文件时，需要<strong style="color: var(--primary);">同时上传视频和音频</strong>。视频提供形象参考，音频提供语音参考。
+            </div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <!-- 视频上传区域 -->
+            <div>
+              <div style="background: rgba(24, 144, 255, 0.08); border: 1px solid var(--primary); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                  <span style="font-size: 1.2rem;">📋</span>
+                  <strong>视频要求</strong>
+                </div>
+                <div style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.8;">
+                  • <strong>时长：</strong>建议 10-60 秒<br>
+                  • <strong>内容：</strong>人物清晰可见，正面或半侧面为佳<br>
+                  • <strong>格式：</strong>MP4、WebM、MOV 等常见格式<br>
+                  • <strong>分辨率：</strong>建议 720p 以上
+                </div>
+              </div>
+              
+              <div class="upload-area" id="uploadArea" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" style="min-height: 200px;">
+                <input type="file" id="uploadFile" accept="video/*" style="display: none;" onchange="handleVideoFileUpload(this)">
+                <div class="upload-icon-large">🎬</div>
+                <div class="upload-text-large">点击或拖拽视频到此处上传</div>
+                <div class="upload-hint">支持 MP4、WebM、MOV 格式</div>
+                <button class="btn secondary" style="margin-top: 20px;" onclick="document.getElementById('uploadFile').click()">选择视频文件</button>
+              </div>
+              
+              <!-- 视频/图片预览区域 -->
+              <div id="videoPreviewSection" style="display: none; margin-top: 16px;">
+                <div class="section-title">预览</div>
+                <div style="background: var(--bg-secondary); border-radius: 12px; padding: 16px; border: 1px solid var(--border);">
+                  <video id="uploadedVideoPreview" controls style="width: 100%; max-height: 200px; border-radius: 8px; margin-bottom: 12px;"></video>
+                  <img id="uploadedImagePreview" alt="上传的图片" style="display: none; width: 100%; max-height: 200px; object-fit: contain; border-radius: 8px; margin-bottom: 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                      <div>文件名：<span id="videoFileName">-</span></div>
+                      <div style="margin-top: 4px;">时长：<span id="videoDuration">-</span></div>
+                    </div>
+                    <button class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="removeUploadedVideo()">🗑️ 删除</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 音频上传区域 -->
+            <div>
+              <div style="background: rgba(24, 144, 255, 0.08); border: 1px solid var(--primary); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                  <span style="font-size: 1.2rem;">📋</span>
+                  <strong>音频要求</strong>
+                </div>
+                <div style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.8;">
+                  • <strong>格式：</strong>MP3、WAV、M4A、AAC（不支持WebM录制格式）<br>
+                  • <strong>大小：</strong>≤5MB<br>
+                  • <strong>时长：</strong>2~60秒<br>
+                  • <strong>质量：</strong>建议清晰，无背景噪音
+                </div>
+              </div>
+              
+              <div class="upload-area" id="uploadAudioArea" ondrop="handleAudioDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" style="min-height: 200px;">
+                <input type="file" id="uploadAudioFile" accept="audio/mpeg,audio/mp3,audio/wav,audio/wave,audio/x-wav,audio/mp4,audio/m4a,audio/x-m4a,audio/aac,.mp3,.wav,.m4a,.aac" style="display: none;" onchange="handleAudioFileUpload(this)">
+                <div class="upload-icon-large">🎵</div>
+                <div class="upload-text-large">点击或拖拽音频到此处上传</div>
+                <div class="upload-hint">支持 MP3、WAV、M4A、AAC 格式，≤5MB，2~60秒</div>
+                <button class="btn secondary" style="margin-top: 20px;" onclick="document.getElementById('uploadAudioFile').click()">选择音频文件</button>
+              </div>
+              
+              <!-- 音频预览区域 -->
+              <div id="audioPreviewSection" style="display: none; margin-top: 16px;">
+                <div class="section-title">音频预览</div>
+                <div style="background: var(--bg-secondary); border-radius: 12px; padding: 16px; border: 1px solid var(--border);">
+                  <audio id="uploadedAudioPreview" controls style="width: 100%; margin-bottom: 12px;"></audio>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                      <div>文件名：<span id="audioFileName">-</span></div>
+                      <div style="margin-top: 4px;">大小：<span id="audioFileSize">-</span></div>
+                    </div>
+                    <button class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="removeUploadedAudio()">🗑️ 删除</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 确认按钮 -->
+          <div style="margin-top: 24px; text-align: center;">
+            <button id="uploadConfirmBtn" class="btn primary" style="padding: 12px 32px; font-size: 1rem; font-weight: 600;" onclick="confirmVideoAndAudioSelection()">
+              ✅ 确认使用此视频和音频
+            </button>
+          </div>
+        </div>
+        
+        <!-- 实时录制区域 -->
+        <div id="recordSection" style="display: none; margin-bottom: 32px;">
+          <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+              <span style="font-size: 1.2rem;">⚠️</span>
+              <strong style="color: var(--warning);">重要提示</strong>
+            </div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
+              实时录制时，需要<strong style="color: var(--primary);">同时录制视频和音频</strong>。视频提供形象参考，音频提供语音参考。
+            </div>
+          </div>
+          
+          <div id="permissionHint" style="background: rgba(24, 144, 255, 0.08); border: 1px solid var(--primary); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: flex-start; gap: 12px;">
+              <span style="font-size: 1.2rem;">💡</span>
+              <div style="flex: 1;">
+                <strong style="display: block; margin-bottom: 8px;">使用说明</strong>
+                <div style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.8;">
+                  • 点击录制按钮时，浏览器会弹出权限请求窗口<br>
+                  • 请点击"允许"以启用录制功能<br>
+                  • 需要<strong style="color: var(--primary);">同时录制视频和音频</strong>才能提交<br>
+                  • 如果浏览器没有弹出权限请求窗口，可能是因为之前已经拒绝过权限<br>
+                  • 此时请点击浏览器地址栏左侧的锁图标，将权限设置为"允许"后刷新页面
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="record-section" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="record-item">
+              <div style="text-align: center; margin-bottom: 12px;">
+                <strong style="color: var(--primary);">📹 录制视频</strong>
+              </div>
+              <button class="record-btn" id="recordVideoBtn" onclick="toggleVideoRecording()">
+                <span class="record-icon">📹</span>
+                <span class="record-text">录制视频</span>
+              </button>
+              <div class="record-preview" id="videoRecordPreview" style="display: none;">
+                <video id="recordedVideo" controls style="max-width: 100%; max-height: 200px; border-radius: 8px;"></video>
+                <div class="record-actions">
+                  <button class="record-action-btn" onclick="playRecordedVideo()">▶️ 播放</button>
+                  <button class="record-action-btn" onclick="removeRecordedVideo()">🗑️ 删除</button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="record-item">
+              <div style="text-align: center; margin-bottom: 12px;">
+                <strong style="color: var(--primary);">🎙️ 录制音频</strong>
+              </div>
+              <button class="record-btn" id="recordAudioBtn" onclick="toggleAudioRecording()">
+                <span class="record-icon">🎙️</span>
+                <span class="record-text">录制语音</span>
+              </button>
+              <div class="record-preview" id="audioRecordPreview" style="display: none;">
+                <audio id="recordedAudio" controls style="width: 100%;"></audio>
+                <div class="record-actions">
+                  <button class="record-action-btn" onclick="playRecordedAudio()">▶️ 播放</button>
+                  <button class="record-action-btn" onclick="removeRecordedAudio()">🗑️ 删除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="record-status" id="recordStatus" style="display: none;">
+            <span class="record-dot"></span>
+            <span id="recordTime">00:00</span>
+          </div>
+          
+          <!-- 确认按钮 -->
+          <div style="margin-top: 24px; text-align: center;">
+            <button class="btn primary" style="padding: 12px 32px; font-size: 1rem; font-weight: 600;" onclick="confirmRecordedVideoAndAudio()">
+              ✅ 确认使用录制的视频和音频
+            </button>
+          </div>
+        </div>
+        
+        <!-- 语音选择（仅在模板模式下显示） -->
+        <div id="voiceSelectionSection" style="margin-bottom: 32px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div class="section-title" style="margin: 0;">🎵 选择语音</div>
+            <button class="btn secondary" id="refreshVoiceBtn" onclick="loadHeyGenVoices('create')" style="padding: 8px 16px; font-size: 0.85rem; position: relative;">
+              <span id="refreshVoiceIcon">🔄</span>
+              <span id="refreshVoiceText">刷新语音</span>
+            </button>
+          </div>
+          
+          <!-- 搜索框 -->
+          <div style="margin-bottom: 16px;">
+            <input 
+              type="text" 
+              id="voiceSearchInput" 
+              placeholder="🔍 搜索语音（按名称、语言、性别）..." 
+              oninput="filterVoices()"
+              style="width: 100%; padding: 12px 16px; font-size: 0.95rem; background: var(--bg-secondary); border: 2px solid var(--border); border-radius: 12px; color: var(--text-primary); transition: all 0.3s;"
+              onfocus="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 0 0 3px rgba(24, 144, 255, 0.1)';"
+              onblur="this.style.borderColor='var(--border)'; this.style.boxShadow='none';">
+          </div>
+          
+          <!-- 语音网格容器 -->
+          <div id="voiceGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; min-height: 200px; max-height: 600px; overflow-y: auto; padding: 8px;">
+            <div id="voiceLoadingState" style="text-align: center; color: var(--text-secondary); padding: 40px; grid-column: 1 / -1;">
+              <div style="font-size: 2.5rem; margin-bottom: 12px; animation: pulse 2s infinite;">⏳</div>
+              <div style="font-size: 0.9rem; margin-bottom: 8px;">正在加载语音...</div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7;">请稍候，正在从 HeyGen 平台获取语音列表</div>
+            </div>
+          </div>
+          
+          <!-- 隐藏的select用于向后兼容 -->
+          <select class="option-select" id="voiceSelect" style="display: none;">
+            <option value="">🎤 默认语音（自动选择）</option>
+          </select>
+          
+          <div style="background: linear-gradient(135deg, rgba(24, 144, 255, 0.12), rgba(82, 196, 26, 0.08)); border: 1px solid var(--primary); border-radius: 12px; padding: 16px; margin-top: 16px; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.8;">
+            <div style="display: flex; align-items: flex-start; gap: 12px;">
+              <span style="font-size: 1.2rem; flex-shrink: 0;">💡</span>
+              <div>
+                <strong style="color: var(--primary); display: block; margin-bottom: 6px;">语音选择说明</strong>
+                <div>此选项用于选择TTS语音，用于朗读您输入的文案。如果选择模板模式，需要同时选择模板和语音才能进行下一步。如果不选择，系统将根据文案语言自动选择合适语音。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="step-actions" style="margin-top: 32px; padding-top: 24px; border-top: 2px solid var(--border);">
+          <button class="step-btn prev" onclick="goToStep(1)">← 上一步</button>
+          <button class="step-btn next primary" onclick="goToStep(3)" style="background: var(--primary); color: white; font-weight: 600;">
+            下一步：配置生成 →
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 步骤3：配置生成 -->
+    <div class="step-content" id="step3Content">
+      <div class="step-card">
+        <h3>🎛️ 配置生成 <span class="step-badge">步骤 3/3</span></h3>
+        
+        <!-- 视频形象预览 -->
+        <div id="step3VideoPreview" style="margin-bottom: 32px; padding: 20px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border);">
+          <div class="section-title">数字人视频形象</div>
+          <div id="step3VideoDisplay" style="text-align: center; color: var(--text-secondary);">
+            请返回上一步选择视频形象
+          </div>
+        </div>
+        
+        <div class="section-title">输入文案</div>
+        <div id="scriptInputSection">
+          <textarea class="script-textarea" id="scriptInput" placeholder="输入数字人要说的话...&#10;&#10;例如：大家好，欢迎来到我们的直播间！今天给大家带来超值好物..." oninput="updateCharCount()" style="min-height: 120px;"></textarea>
+          <div class="char-count" id="charCount">0 / 500 字</div>
+        </div>
+        
+        <!-- 云雾可灵数字人专用提示：必须提供音频 -->
+        <div id="yunwuAudioHint" style="display: none; background: linear-gradient(135deg, rgba(24, 144, 255, 0.12), rgba(82, 196, 26, 0.08)); border: 1px solid var(--primary); border-radius: 12px; padding: 16px; margin-top: 16px; margin-bottom: 24px; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.8;">
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <span style="font-size: 1.2rem; flex-shrink: 0;">💡</span>
+            <div>
+              <strong style="color: var(--primary); display: block; margin-bottom: 6px;">云雾可灵数字人提示</strong>
+              <div>• 可灵数字人接口<strong>必须提供音频</strong>，请确保已在步骤2上传音频文件<br>
+              • 音频支持 .mp3/.wav/.m4a/.aac，时长 2~60 秒，文件 ≤5MB<br>
+              • 上方文案为<strong>可选项</strong>，仅作备注，生成以音频为准</div>
+            </div>
+          </div>
+        </div>
+        <div class="section-title" style="margin-top: 24px;">音频设置</div>
+        <div id="audioSettingsSection">
+          <div class="options-grid">
+            <div class="option-group">
+              <label>音频格式</label>
+              <select class="option-select" id="formatSelect">
+              <option value="wav">WAV (高质量)</option>
+              <option value="mp3">MP3 (通用)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="slider-group">
+          <div class="slider-header">
+            <label>⚡ 语速</label>
+            <span class="slider-value" id="speedValue">5</span>
+          </div>
+          <input type="range" class="slider" id="speedSlider" min="0" max="15" value="5" oninput="updateSliderValue('speed')">
+        </div>
+        
+        <div class="slider-group">
+          <div class="slider-header">
+            <label>🎵 音调</label>
+            <span class="slider-value" id="pitchValue">5</span>
+          </div>
+          <input type="range" class="slider" id="pitchSlider" min="0" max="15" value="5" oninput="updateSliderValue('pitch')">
+        </div>
+        
+        <div class="slider-group">
+          <div class="slider-header">
+            <label>🔊 音量</label>
+            <span class="slider-value" id="volumeValue">5</span>
+          </div>
+          <input type="range" class="slider" id="volumeSlider" min="0" max="15" value="5" oninput="updateSliderValue('volume')">
+        </div>
+        </div>
+        
+        <div class="section-title" style="margin-top: 32px;">数字人信息</div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label>数字人名称</label>
+          <input type="text" id="digitalHumanName" placeholder="给您的数字人起个名字" style="width: 100%; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label>数字人描述</label>
+          <textarea id="digitalHumanDesc" placeholder="描述数字人的特点和用途..." style="width: 100%; min-height: 100px; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); resize: vertical;"></textarea>
+        </div>
+        
+        <div class="step-actions">
+          <button class="step-btn prev" onclick="goToStep(2)">← 上一步</button>
+          <button class="step-btn next" onclick="createDigitalHuman()">🚀 生成数字人</button>
+        </div>
+      </div>
+    </div>
+      </div>
+    </div>
+    
+    <!-- 数字人管理内容 -->
+    <div class="content-panel hidden" id="managePanel">
+      <div class="page-title">
+        <h1>👥 数字人管理</h1>
+        <p>管理您创建的所有数字人</p>
+      </div>
+      
+      <div class="history-list" id="digitalHumanManageList">
+        <!-- 动态加载 -->
+      </div>
+    </div>
+    
+    <!-- 作品管理内容 -->
+    <div class="content-panel hidden" id="worksPanel">
+      <div class="page-title">
+        <h1>🎬 作品管理</h1>
+        <p>管理所有生成的视频作品</p>
+      </div>
+      
+      <div class="history-list" id="worksList">
+        <!-- 动态加载 -->
+      </div>
+    </div>
+    
+    <!-- 诵读文案面板 -->
+    <div class="content-panel hidden" id="recitePanel">
+      <div class="page-title">
+        <h1>📖 诵读文案</h1>
+        <p>让数字人帮您诵读文案，生成专业视频</p>
+      </div>
+      
+      <div class="step-card" style="max-width: 900px; margin: 0 auto;">
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择数字人形象</label>
+          
+          <!-- 选择模式切换 -->
+          <div style="display: flex; gap: 12px; margin-bottom: 16px; background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+            <button id="reciteModeTemplate" class="btn secondary" onclick="switchReciteAvatarMode('template')" style="flex: 1; padding: 10px;">
+              📚 使用模板
+            </button>
+            <button id="reciteModeMyDigitalHuman" class="btn secondary" onclick="switchReciteAvatarMode('myDigitalHuman')" style="flex: 1; padding: 10px;">
+              👤 使用我创建的数字人
+            </button>
+          </div>
+          
+          <div id="reciteAvatarSelector" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+              <div style="font-size: 2rem; margin-bottom: 8px;">⏳</div>
+              <div style="font-size: 0.85rem;">正在加载模板...</div>
+            </div>
+          </div>
+          <button id="reciteRefreshBtn" class="btn secondary" onclick="loadReciteAvatars()" style="width: 100%;">
+            🔄 刷新列表
+          </button>
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">文案内容 <span style="color: var(--text-secondary); font-weight: normal;">(必填)</span></label>
+          <textarea id="reciteScript" class="script-input" placeholder="请输入需要诵读的文案内容..." rows="8" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); font-size: 1rem; line-height: 1.6; resize: vertical;"></textarea>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">
+              字数：<span id="reciteCharCount">0</span> / 1000
+            </span>
+            <button class="btn secondary" onclick="loadHeyGenVoices('recite')" style="padding: 8px 16px; font-size: 0.85rem;">
+              🔄 获取语音列表
+            </button>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择语音</label>
+          <select id="reciteVoiceSelect" class="option-select" style="width: 100%;">
+            <option value="">默认语音（自动选择）</option>
+          </select>
+        </div>
+        
+        <div style="display: flex; gap: 12px;">
+          <button class="btn primary" style="flex: 1; padding: 16px; font-size: 1rem; font-weight: 600;" onclick="createReciteVideo()">
+            🚀 生成诵读视频
+          </button>
+          <button class="btn secondary" style="padding: 16px;" onclick="previewReciteScript()">
+            🔊 预览语音
+          </button>
+        </div>
+      </div>
+      
+      <div class="history-list" id="reciteHistoryList" style="margin-top: 40px;">
+        <!-- 动态加载历史记录 -->
+      </div>
+    </div>
+    
+    <!-- 卖货推送面板 -->
+    <div class="content-panel hidden" id="promotePanel">
+      <div class="page-title">
+        <h1>🛒 卖货推送</h1>
+        <p>创建商品推广视频，数字人帮您带货</p>
+      </div>
+      
+      <div class="step-card" style="max-width: 900px; margin: 0 auto;">
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择数字人形象</label>
+          
+          <!-- 选择模式切换 -->
+          <div style="display: flex; gap: 12px; margin-bottom: 16px; background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+            <button id="promoteModeTemplate" class="btn secondary" onclick="switchPromoteAvatarMode('template')" style="flex: 1; padding: 10px;">
+              📚 使用模板
+            </button>
+            <button id="promoteModeMyDigitalHuman" class="btn secondary" onclick="switchPromoteAvatarMode('myDigitalHuman')" style="flex: 1; padding: 10px;">
+              👤 使用我创建的数字人
+            </button>
+          </div>
+          
+          <div id="promoteAvatarSelector" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+              <div style="font-size: 2rem; margin-bottom: 8px;">⏳</div>
+              <div style="font-size: 0.85rem;">正在加载模板...</div>
+            </div>
+          </div>
+          <button id="promoteRefreshBtn" class="btn secondary" onclick="loadPromoteAvatars()" style="width: 100%;">
+            🔄 刷新列表
+          </button>
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">商品名称 <span style="color: var(--text-secondary); font-weight: normal;">(必填)</span></label>
+          <input type="text" id="promoteProductName" class="script-input" placeholder="请输入商品名称..." style="width: 100%; padding: 12px 16px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); font-size: 1rem;">
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">商品描述 <span style="color: var(--text-secondary); font-weight: normal;">(必填)</span></label>
+          <textarea id="promoteProductDesc" class="script-input" placeholder="请输入商品描述和卖点..." rows="6" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); font-size: 1rem; line-height: 1.6; resize: vertical;"></textarea>
+          <div style="margin-top: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+            字数：<span id="promoteCharCount">0</span> / 500
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">上传商品图片 <span style="color: var(--text-secondary); font-weight: normal;">(可选)</span></label>
+          <div class="upload-area" id="promoteImageUploadArea" ondrop="handleProductImageDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" style="min-height: 150px;">
+            <input type="file" id="promoteImageInput" accept="image/*" style="display: none;" onchange="handleProductImageUpload(this, 'promote')">
+            <div class="upload-icon-large">🖼️</div>
+            <div class="upload-text-large">点击或拖拽商品图片到此处</div>
+            <div class="upload-hint">支持 JPG、PNG、WebP 格式</div>
+            <button class="btn secondary" style="margin-top: 20px;" onclick="document.getElementById('promoteImageInput').click()">选择图片</button>
+          </div>
+          <div id="promoteImagePreview" style="display: none; margin-top: 16px;">
+            <div style="background: var(--bg-secondary); border-radius: 12px; padding: 16px; border: 1px solid var(--border);">
+              <img id="promoteImagePreviewImg" src="" style="max-width: 100%; max-height: 300px; border-radius: 8px; margin-bottom: 12px;">
+              <button class="btn secondary" onclick="removeProductImage('promote')" style="width: 100%;">🗑️ 删除图片</button>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择语音</label>
+          <select id="promoteVoiceSelect" class="option-select" style="width: 100%;">
+            <option value="">默认语音（自动选择）</option>
+          </select>
+        </div>
+        
+        <div style="display: flex; gap: 12px;">
+          <button class="btn primary" style="flex: 1; padding: 16px; font-size: 1rem; font-weight: 600;" onclick="createPromoteVideo()">
+            🚀 生成推广视频
+          </button>
+          <button class="btn secondary" onclick="loadHeyGenVoices('promote')" style="padding: 16px;">
+            🔄 获取语音
+          </button>
+        </div>
+      </div>
+      
+      <div class="history-list" id="promoteHistoryList" style="margin-top: 40px;">
+        <!-- 动态加载历史记录 -->
+      </div>
+    </div>
+  </main>
+  
+  <!-- 加载动画 -->
+  <div class="loading-overlay hidden" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">正在生成语音...</div>
+  </div>
+  
+  <script src="digital-human-cn.js"></script>
+</body>
+</html>

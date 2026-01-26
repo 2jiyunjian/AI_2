@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能体管理平台 - 管理后台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #1890ff;
+      --primary-dark: #096dd9;
+      --primary-light: #40a9ff;
+      --secondary: #722ed1;
+      --success: #52c41a;
+      --warning: #faad14;
+      --danger: #ff4d4f;
+      --sidebar-bg: #001529;
+      --sidebar-hover: #000c17;
+      --sidebar-active: #1890ff;
+      --content-bg: #f0f2f5;
+      --card-bg: #ffffff;
+      --text-primary: #262626;
+      --text-secondary: #8c8c8c;
+      --border-color: #f0f0f0;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      background: var(--content-bg);
+    }
+
+    /* 侧边栏 */
+    .sidebar {
+      width: 256px;
+      background: var(--sidebar-bg);
+      min-height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .logo-text {
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .logo-text span {
+      color: var(--primary-light);
+      font-size: 0.75rem;
+      display: block;
+      font-weight: 400;
+      margin-top: 2px;
+    }
+
+    /* 用户信息 */
+    .user-info {
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--danger), #ff7875);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .user-details {
+      flex: 1;
+    }
+
+    .user-name {
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: rgba(255, 77, 79, 0.2);
+      border-radius: 10px;
+      color: #ff7875;
+      font-size: 0.7rem;
+      margin-top: 4px;
+    }
+
+    /* 菜单导航 */
+    .nav-menu {
+      flex: 1;
+      padding: 8px 0;
+      overflow-y: auto;
+    }
+
+    .menu-item {
+      position: relative;
+    }
+
+    .menu-link {
+      display: flex;
+      align-items: center;
+      padding: 12px 24px;
+      color: rgba(255, 255, 255, 0.65);
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+
+    .menu-link:hover {
+      color: white;
+    }
+
+    .menu-link.active {
+      background: var(--sidebar-active);
+      color: white;
+    }
+
+    .menu-link.parent {
+      font-weight: 500;
+    }
+
+    .menu-icon {
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .menu-text {
+      flex: 1;
+    }
+
+    .menu-arrow {
+      transition: transform 0.3s ease;
+      font-size: 0.7rem;
+      opacity: 0.5;
+    }
+
+    .menu-item.open .menu-arrow {
+      transform: rotate(90deg);
+    }
+
+    /* 功能标签 */
+    .menu-tag {
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      margin-left: 8px;
+    }
+
+    .menu-tag.blue { background: rgba(24, 144, 255, 0.2); color: #69c0ff; }
+    .menu-tag.green { background: rgba(82, 196, 26, 0.2); color: #95de64; }
+    .menu-tag.orange { background: rgba(250, 173, 20, 0.2); color: #ffc53d; }
+    .menu-tag.purple { background: rgba(114, 46, 209, 0.2); color: #b37feb; }
+    .menu-tag.red { background: rgba(255, 77, 79, 0.2); color: #ff7875; }
+
+    /* 二级菜单 */
+    .submenu {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .menu-item.open .submenu {
+      max-height: 600px;
+    }
+
+    .submenu-link {
+      display: flex;
+      align-items: center;
+      padding: 10px 24px 10px 50px;
+      color: rgba(255, 255, 255, 0.65);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .submenu-link:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .submenu-link.active {
+      color: var(--primary-light);
+      background: rgba(24, 144, 255, 0.1);
+    }
+
+    .submenu-link::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      margin-right: 10px;
+      opacity: 0.5;
+    }
+
+    .submenu-link:hover::before,
+    .submenu-link.active::before {
+      opacity: 1;
+    }
+
+    .submenu-text {
+      flex: 1;
+    }
+
+    /* 退出按钮 */
+    .sidebar-footer {
+      padding: 16px 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .logout-btn {
+      width: 100%;
+      padding: 10px;
+      background: rgba(255, 77, 79, 0.1);
+      border: 1px solid rgba(255, 77, 79, 0.3);
+      border-radius: 6px;
+      color: #ff7875;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+
+    .logout-btn:hover {
+      background: rgba(255, 77, 79, 0.2);
+    }
+
+    /* 主内容区 */
+    .main-content {
+      flex: 1;
+      margin-left: 256px;
+      min-height: 100vh;
+    }
+
+    /* 顶部导航 */
+    .top-header {
+      background: var(--card-bg);
+      padding: 0 24px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .breadcrumb-item {
+      color: var(--text-primary);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: background 0.2s ease;
+    }
+
+    .header-btn:hover {
+      background: var(--content-bg);
+    }
+
+    /* 内容区域 */
+    .content-area {
+      padding: 24px;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .page-desc {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    /* 统计卡片 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .stat-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .stat-card-title {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .stat-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .stat-card-icon.blue { background: rgba(24, 144, 255, 0.1); }
+    .stat-card-icon.green { background: rgba(82, 196, 26, 0.1); }
+    .stat-card-icon.purple { background: rgba(114, 46, 209, 0.1); }
+    .stat-card-icon.orange { background: rgba(250, 173, 20, 0.1); }
+
+    .stat-card-value {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .stat-card-footer {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .stat-card-footer .up { color: var(--success); }
+    .stat-card-footer .down { color: var(--danger); }
+
+    /* 内容卡片 */
+    .content-card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 24px;
+    }
+
+    .content-card-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .content-card-title {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .content-card-body {
+      padding: 24px;
+    }
+
+    /* 快捷操作 */
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .quick-item {
+      padding: 20px;
+      border: 1px dashed var(--border-color);
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .quick-item:hover {
+      border-color: var(--primary);
+      border-style: solid;
+      background: rgba(24, 144, 255, 0.02);
+    }
+
+    .quick-item-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .quick-item-text {
+      color: var(--text-primary);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 1200px) {
+      .stats-grid, .quick-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      .main-content {
+        margin-left: 0;
+      }
+      .stats-grid, .quick-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">🤖</div>
+      <div class="logo-text">
+        智能体管理平台
+        <span>管理后台</span>
+      </div>
+    </div>
+
+    <div class="user-info">
+      <div class="user-avatar" id="userAvatar">A</div>
+      <div class="user-details">
+        <div class="user-name" id="userName">管理员</div>
+        <div class="role-badge">系统管理员</div>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <!-- 系统总后台 -->
+      <div class="menu-item open">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">🖥️</span>
+          <span class="menu-text">系统总后台</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link active" href="#">
+            <span class="submenu-text">智能体列表</span>
+            <span class="menu-tag blue">智能体</span>
+          </a>
+          <a class="submenu-link" href="#">
+            <span class="submenu-text">智能体分类</span>
+          </a>
+          <a class="submenu-link" href="#">
+            <span class="submenu-text">工作流列表</span>
+            <span class="menu-tag purple">工作流</span>
+          </a>
+          <a class="submenu-link" href="#">
+            <span class="submenu-text">全局配置</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 商业智能体 -->
+      <div class="menu-item">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">💼</span>
+          <span class="menu-text">商业智能体</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link" href="#">
+            <span class="submenu-text">官方直营智能体</span>
+          </a>
+          <a class="submenu-link" href="#">
+            <span class="submenu-text">用户创建智能体</span>
+            <span class="menu-tag green">创建智能体</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 智能体作品 -->
+      <div class="menu-item">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">📦</span>
+          <span class="menu-text">智能体作品</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link" href="#">
+            <span class="submenu-text">智能体购买订单</span>
+            <span class="menu-tag orange">信用卡支付</span>
+          </a>
+          <a class="submenu-link" href="#">
+            <span class="submenu-text">会员购买订单</span>
+            <span class="menu-tag orange">月付</span>
+          </a>
+          <a class="submenu-link" href="#">
+            <span class="submenu-text">智能算力豆购买订单</span>
+            <span class="menu-tag orange">信用卡支付</span>
+          </a>
+          <a class="submenu-link" href="#">
+            <span class="submenu-text">工作流购买订单</span>
+            <span class="menu-tag orange">信用卡支付</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 系统设置 -->
+      <div class="menu-item">
+        <div class="menu-link parent" onclick="toggleSubmenu(this)">
+          <span class="menu-icon">⚙️</span>
+          <span class="menu-text">系统设置</span>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="submenu">
+          <a class="submenu-link" href="#">
+            <span class="submenu-text">系统管理员</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="logout()">
+        <span>🚪</span>
+        <span>退出登录</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- 主内容区 -->
+  <main class="main-content">
+    <header class="top-header">
+      <div class="breadcrumb">
+        <span>🏠</span>
+        <span>/</span>
+        <span>系统总后台</span>
+        <span>/</span>
+        <span class="breadcrumb-item">智能体列表</span>
+      </div>
+      <div class="header-actions">
+        <button class="header-btn" title="搜索">🔍</button>
+        <button class="header-btn" title="消息">🔔</button>
+        <button class="header-btn" title="设置">⚙️</button>
+      </div>
+    </header>
+
+    <div class="content-area">
+      <div class="page-header">
+        <h1 class="page-title">管理后台仪表盘</h1>
+        <p class="page-desc">管理所有系统中的智能体、工作流和订单</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">智能体总数</span>
+            <div class="stat-card-icon blue">🤖</div>
+          </div>
+          <div class="stat-card-value">1,286</div>
+          <div class="stat-card-footer">
+            <span class="up">↑ 12%</span> 较上周
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">工作流总数</span>
+            <div class="stat-card-icon purple">⚡</div>
+          </div>
+          <div class="stat-card-value">368</div>
+          <div class="stat-card-footer">
+            <span class="up">↑ 8%</span> 较上周
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">今日订单</span>
+            <div class="stat-card-icon orange">📦</div>
+          </div>
+          <div class="stat-card-value">892</div>
+          <div class="stat-card-footer">
+            <span class="up">↑ 23%</span> 较昨日
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <span class="stat-card-title">今日收入</span>
+            <div class="stat-card-icon green">💰</div>
+          </div>
+          <div class="stat-card-value">¥58,620</div>
+          <div class="stat-card-footer">
+            <span class="up">↑ 15%</span> 较昨日
+          </div>
+        </div>
+      </div>
+
+      <div class="content-card">
+        <div class="content-card-header">
+          <span class="content-card-title">快捷操作</span>
+        </div>
+        <div class="content-card-body">
+          <div class="quick-grid">
+            <div class="quick-item">
+              <div class="quick-item-icon">🤖</div>
+              <div class="quick-item-text">审核智能体</div>
+            </div>
+            <div class="quick-item">
+              <div class="quick-item-icon">⚡</div>
+              <div class="quick-item-text">审核工作流</div>
+            </div>
+            <div class="quick-item">
+              <div class="quick-item-icon">📦</div>
+              <div class="quick-item-text">订单管理</div>
+            </div>
+            <div class="quick-item">
+              <div class="quick-item-icon">👥</div>
+              <div class="quick-item-text">用户管理</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // 检查登录状态
+    const user = JSON.parse(sessionStorage.getItem('user'));
+    
+    if (!user || user.role !== 'admin') {
+      window.location.href = '/';
+    } else {
+      document.getElementById('userName').textContent = user.username;
+      document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+    }
+
+    // 切换子菜单
+    function toggleSubmenu(element) {
+      const menuItem = element.parentElement;
+      menuItem.classList.toggle('open');
+    }
+
+    // 退出登录
+    function logout() {
+      sessionStorage.removeItem('user');
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>

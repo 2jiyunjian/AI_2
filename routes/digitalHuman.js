@@ -1327,8 +1327,10 @@ router.post('/yunwu/digital-human', async (req, res) => {
       return res.json({ success: false, message: errMsg });
     }
 
-    // 提取任务ID（根据API响应格式，可能在多个字段中）
-    const taskId = data?.id || data?.task_id || data?.request_id || data?.external_task_id || data?.data?.id || null;
+    // 查询接口 GET /kling/v1/videos/avatar/image2video/{id} 的 path 为 id，示例 '825470997289144397'
+    // 与云雾控制台一致的「查询用 id」优先：data.id / id / task_id，request_id 仅作备用
+    const queryId = data?.data?.id ?? data?.id ?? data?.data?.task_id ?? data?.task_id ?? null;
+    const taskId = queryId ?? data?.request_id ?? data?.external_task_id ?? null;
     if (!taskId) {
       console.warn('云雾数字人接口响应中未找到任务ID:', {
         status: response.status,
@@ -1691,7 +1693,7 @@ router.get('/yunwu/task/:taskId', async (req, res) => {
 
     // 标准化状态
     const statusLower = String(rawStatus).toLowerCase();
-    if (['succeeded', 'success', 'completed', 'done', 'finish', 'finished'].includes(statusLower)) {
+    if (['succeed', 'succeeded', 'success', 'completed', 'done', 'finish', 'finished'].includes(statusLower)) {
       status = 'completed';
       progress = 100;
     } else if (['failed', 'error', 'failure', 'fail'].includes(statusLower)) {
@@ -2082,10 +2084,13 @@ router.post('/digital-human/create', async (req, res) => {
           throw new Error(errorMsg);
         }
 
-        // 提取任务ID
-        const taskId = result?.id || result?.task_id || result?.request_id || 
-                      result?.data?.id || result?.data?.task_id;
-        
+        // 查询接口 GET /kling/v1/videos/avatar/image2video/{id} 的 path 参数为 id，示例 '825470997289144397'
+        // 与云雾控制台/查询接口一致的「查询用 id」优先取自 data.id / id，request_id 仅作备用
+        const queryId = result?.data?.id ?? result?.id ?? result?.data?.task_id ?? result?.task_id ?? null;
+        const requestId = result?.request_id ?? result?.data?.request_id ?? null;
+        const taskId = queryId ?? requestId;
+        const altTaskId = (requestId && String(requestId) !== String(taskId)) ? requestId : null;
+
         if (!taskId) {
           // ✅ 修复：在抛出错误前清理timeoutId
           if (timeoutId) {
@@ -2097,7 +2102,7 @@ router.post('/digital-human/create', async (req, res) => {
         }
 
         console.log('=== 云雾数字人创建成功 ===');
-        console.log('任务ID:', taskId);
+        console.log('任务ID:', taskId, altTaskId ? 'altTaskId: ' + altTaskId : '');
         console.log('任务状态:', result?.status || 'processing');
         console.log('完整响应数据:', JSON.stringify(result, null, 2));
 
@@ -2106,6 +2111,7 @@ router.post('/digital-human/create', async (req, res) => {
           provider: 'yunwu',
           taskId,
           id: taskId, // 兼容字段
+          ...(altTaskId ? { altTaskId } : {}), // 查询时可作 altId 重试
           status: result?.status || 'processing',
           message: '数字人创建任务已提交',
           estimatedTime: '约2-5分钟',
@@ -2359,6 +2365,7 @@ router.get('/digital-human/task/:provider/:taskId', async (req, res) => {
 
     const { provider, taskId } = req.params;
     const apiKey = req.headers['x-api-key'] || req.query.apiKey;
+    const altId = req.query.altId; // 可选备用ID，例如 request_id
 
     if (!provider || !['heygen', 'yunwu'].includes(provider)) {
       return res.json({ success: false, message: 'provider 仅支持 heygen 或 yunwu' });
@@ -2378,35 +2385,119 @@ router.get('/digital-human/task/:provider/:taskId', async (req, res) => {
     console.log('统一数字人任务查询:', { provider, taskId });
 
     if (provider === 'yunwu') {
-      // 直接调用云雾API，不要通过localhost转发
+      // 直接调用云雾API；云雾创建成功后可能需几秒才可查询，遇 task_not_exist 时重试
       try {
-        const response = await fetch(
-          `https://yunwu.ai/kling/v1/videos/avatar/image2video/${encodeURIComponent(taskId)}`,
-          {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            timeout: 30000,
-          }
-        );
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 含重试整体 60s
 
-        const result = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(result.message || result.error || `查询失败: ${response.status}`);
+        const queryYunwu = async (id) => {
+          const resp = await fetch(
+            `https://yunwu.ai/kling/v1/videos/avatar/image2video/${encodeURIComponent(id)}`,
+            {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${apiKey.trim()}`,
+                'Content-Type': 'application/json',
+              },
+              signal: controller.signal,
+            }
+          );
+          const data = await resp.json().catch(() => ({}));
+          return { resp, data };
+        };
+
+        const isTaskNotExist = (resp, data) => {
+          if (!resp) return false;
+          const msg = (data?.message || data?.error || '').toLowerCase();
+          return resp.status === 404 || /task.*not.*exist|任务不存在|task_not_exist|not.*found|不存在/i.test(msg);
+        };
+
+        const idsToTry = [taskId.trim()];
+        if (altId && String(altId).trim() && String(altId).trim() !== taskId.trim()) {
+          idsToTry.push(String(altId).trim());
         }
 
-        // 标准化响应格式
-        const status = result?.status || 'processing';
-        const videoUrl = result?.video_url || result?.url || result?.data?.video_url;
-        const progress = result?.progress || result?.data?.progress || 0;
+        let resp;
+        let result;
+        const maxRetries = 2;
+        const retryDelayMs = 5000;
+
+        for (const id of idsToTry) {
+          resp = null;
+          result = null;
+          for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            const { resp: r, data: d } = await queryYunwu(id);
+            resp = r;
+            result = d;
+            if (resp.ok) break;
+            if (!isTaskNotExist(resp, result) || attempt === maxRetries) break;
+            console.warn('云雾任务查询返回任务不存在，延迟后重试:', { id, attempt: attempt + 1, message: result?.message });
+            await new Promise(r => setTimeout(r, retryDelayMs));
+          }
+          if (resp && resp.ok) break;
+          if (idsToTry.indexOf(id) < idsToTry.length - 1) {
+            console.warn('主 taskId 查询失败，尝试备用 altId:', { taskId, altId, status: resp?.status, message: result?.message });
+          }
+        }
+
+        clearTimeout(timeoutId);
+
+        if (!resp || !resp.ok) {
+          const errMsg = result?.message || result?.error || `查询失败: ${resp?.status || 'unknown'}`;
+          return res.json({
+            success: false,
+            provider: 'yunwu',
+            message: errMsg.includes('task_not_exist') || /任务不存在/i.test(errMsg)
+              ? `任务不存在或尚未可查询（已重试）。若云雾控制台显示创建成功，请稍后在「数字人管理」中点击「重新查询」。\n\n原始信息: ${errMsg}`
+              : errMsg,
+          });
+        }
+
+        // 云雾 200 但业务失败：code 非 0 且 message 含“不存在”等则按查询失败返回，避免误判为处理中
+        const bodyCode = result?.code ?? result?.data?.code;
+        const bodyMsg = String(result?.message ?? result?.data?.message ?? '').toLowerCase();
+        if (bodyCode != null && bodyCode !== 0 && bodyCode !== 200 && /task.*not.*exist|任务不存在|not.*found|不存在/i.test(bodyMsg)) {
+          return res.json({
+            success: false,
+            provider: 'yunwu',
+            message: `任务不存在或无法查询。若控制台显示已完成，请用控制台里的「任务ID」在失败卡片中「用新ID查询」。\n\n原始: ${result?.message ?? result?.data?.message ?? ''}`,
+          });
+        }
+
+        // 与云雾实际响应一致：多字段解析 + 状态标准化（含顶层 status/SUCCESS、data.data.task_status、data.task_result.videos[0].url）
+        const rawStatus = result?.status || result?.task_status || result?.state || result?.data?.status
+          || result?.data?.data?.task_status || result?.data?.task_status || result?.data?.message || '';
+        let status = 'processing';
+        let progress = Number(result?.progress ?? result?.data?.progress ?? result?.data?.data?.progress ?? 0) || 0;
+        if (typeof result?.progress === 'string' && result.progress.includes('%')) {
+          progress = Math.min(100, parseInt(result.progress, 10) || 0);
+        }
+        const videoUrl = result?.video_url || result?.url || result?.result?.video_url
+          || result?.data?.video_url || result?.data?.url || result?.result?.url
+          || result?.data?.data?.task_result?.videos?.[0]?.url || result?.data?.task_result?.videos?.[0]?.url || null;
+        const statusLower = String(rawStatus).toLowerCase();
+        if (['succeed', 'succeeded', 'success', 'completed', 'done', 'finish', 'finished'].includes(statusLower)) {
+          status = 'completed';
+          progress = 100;
+        } else if (['failed', 'error', 'failure', 'fail'].includes(statusLower)) {
+          status = 'failed';
+        } else if (['processing', 'pending', 'in_progress', 'waiting', 'queued', 'running'].includes(statusLower)) {
+          status = 'processing';
+          if (progress === 0) progress = 50;
+        }
+        // 已拿到视频地址则视为完成，避免控制台已成功但响应字段不同导致一直轮询
+        if (status === 'processing' && videoUrl) {
+          status = 'completed';
+          progress = 100;
+        }
+
+        console.log('云雾任务查询解析:', { taskId, rawStatus: rawStatus || '(空)', status, hasVideoUrl: !!videoUrl });
 
         return res.json({
           success: true,
           provider: 'yunwu',
           taskId,
+          altId: altId || null,
           status,
           progress,
           videoUrl,

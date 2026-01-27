@@ -688,32 +688,28 @@
   <script>
     // ========== API 配置 ==========
     function getApiBaseUrl() {
-      // 线上部署地址
-      const PRODUCTION_URL = 'https://ai-2-7gjx.onrender.com';
-      
+      // 优先从 localStorage 读取配置
       try {
         const customBaseUrl = localStorage.getItem('api_base_url');
         if (customBaseUrl && customBaseUrl.trim()) {
-          const url = customBaseUrl.trim().replace(/\/+$/, '');
-          // 禁止使用localhost
-          if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
-            return url;
-          }
-          // 如果是localhost，使用线上地址
-          console.warn('检测到localhost地址，已自动切换到线上地址');
+          // 如果明确设置了api_base_url，使用该值（允许localhost）
+          return customBaseUrl.trim().replace(/\/+$/, '');
         }
       } catch (e) {
         console.warn('无法读取 api_base_url 配置:', e);
       }
       
-      // 检查当前页面是否是localhost
+      // 检查是否强制使用本地
+      const useLocal = localStorage.getItem('use_local') === 'true';
       const currentOrigin = window.location.origin;
-      if (currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')) {
-        // 如果是localhost，使用线上地址
-        return PRODUCTION_URL;
+      const isLocalhost = currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1');
+      
+      if (useLocal || isLocalhost) {
+        // 本地环境：使用相对路径（空字符串），这样会使用当前域名和端口
+        return '';
       }
       
-      // 如果不是localhost，使用当前页面的origin
+      // 线上环境：使用当前页面的origin
       return currentOrigin;
     }
 
@@ -1137,7 +1133,31 @@
         });
 
         console.log('Response status:', response.status);
-        const data = await response.json();
+        
+        // 检查响应状态
+        if (!response.ok) {
+          console.error('HTTP错误状态:', response.status, response.statusText);
+        }
+        
+        let data;
+        try {
+          const responseText = await response.text();
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('JSON解析失败:', parseError);
+            console.error('响应内容:', responseText.substring(0, 500));
+            hideTyping();
+            showError(`服务器返回了非JSON格式的响应 (HTTP ${response.status})\n\n响应内容: ${responseText.substring(0, 200)}`, 'parse_error');
+            return;
+          }
+        } catch (textError) {
+          console.error('读取响应失败:', textError);
+          hideTyping();
+          showError('无法读取服务器响应', 'network');
+          return;
+        }
+        
         hideTyping();
 
         if (data.success) {
@@ -1151,8 +1171,20 @@
           saveHistory();
           console.log('Message sent successfully');
         } else {
-          console.error('API error:', data.message);
-          showError(data.message || '请求失败，请重试', data.errorType);
+          console.error('API error:', {
+            message: data.message,
+            errorType: data.errorType,
+            originalError: data.originalError,
+            status: response.status
+          });
+          
+          // 显示错误信息，如果是开发环境且存在原始错误，也显示
+          let errorMsg = data.message || '请求失败，请重试';
+          if (data.originalError && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            errorMsg += `\n\n[调试信息] ${data.originalError}`;
+          }
+          
+          showError(errorMsg, data.errorType);
         }
 
       } catch (error) {

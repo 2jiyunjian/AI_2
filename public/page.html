@@ -4261,33 +4261,32 @@
 
   <script>
     // ========== API 配置 ==========
+    // API 基础 URL 配置（支持本地和线上测试）
+    // 可以通过 localStorage 设置 'api_base_url' 来覆盖默认值
+    // 设置 'use_local' 为 'true' 强制使用本地地址（即使在线上也使用localhost）
     function getApiBaseUrl() {
-      // 线上部署地址
-      const PRODUCTION_URL = 'https://ai-2-7gjx.onrender.com';
-      
+      // 优先从 localStorage 读取配置
       try {
         const customBaseUrl = localStorage.getItem('api_base_url');
         if (customBaseUrl && customBaseUrl.trim()) {
-          const url = customBaseUrl.trim().replace(/\/+$/, '');
-          // 禁止使用localhost
-          if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
-            return url;
-          }
-          // 如果是localhost，使用线上地址
-          console.warn('检测到localhost地址，已自动切换到线上地址');
+          // 如果明确设置了api_base_url，使用该值（允许localhost）
+          return customBaseUrl.trim().replace(/\/+$/, '');
         }
       } catch (e) {
         console.warn('无法读取 api_base_url 配置:', e);
       }
       
-      // 检查当前页面是否是localhost
+      // 检查是否强制使用本地
+      const useLocal = localStorage.getItem('use_local') === 'true';
       const currentOrigin = window.location.origin;
-      if (currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')) {
-        // 如果是localhost，使用线上地址
-        return PRODUCTION_URL;
+      const isLocalhost = currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1');
+      
+      if (useLocal || isLocalhost) {
+        // 本地环境：使用相对路径（空字符串），这样会使用当前域名和端口
+        return '';
       }
       
-      // 如果不是localhost，使用当前页面的origin
+      // 线上环境：使用当前页面的origin
       return currentOrigin;
     }
 
@@ -5277,7 +5276,9 @@
         'Gemini': 'gemini',
         'MiniMax': 'minimax',
         '百川智能': 'baichuan',
-        'Llama': 'llama'
+        'Llama': 'llama',
+        'HeyGen': 'heygen',
+        '云雾AI': 'yunwu'
       };
       return mapping[platformName] || 'openai';
     }
@@ -5555,6 +5556,8 @@
       { id: 'moonshot', name: 'Kimi', logo: '🌙', color: '#8b5cf6' },
       { id: 'deepseek', name: 'DeepSeek', logo: '🌊', color: '#0ea5e9' },
       { id: 'glm', name: '智谱AI/GLM', logo: '🟢', color: '#059669' },
+      { id: 'heygen', name: 'HeyGen', logo: '🎬', color: '#ff6b6b' },
+      { id: 'yunwu', name: '云雾AI', logo: '☁️', color: '#4dabf7' },
     ];
 
     function openCreateAgentModal(preselectedModelId, preselectedModelName) {
@@ -5618,7 +5621,9 @@
         'moonshot': 'https://platform.moonshot.cn/',
         'deepseek': 'https://platform.deepseek.com/',
         'glm': 'https://open.bigmodel.cn/',
-        'groq': 'https://console.groq.com/keys'
+        'groq': 'https://console.groq.com/keys',
+        'heygen': 'https://app.heygen.com/settings?tab=api_keys',
+        'yunwu': 'https://yunwu.ai/token'
       };
       
       const linkEl = document.getElementById('apiKeyLink');

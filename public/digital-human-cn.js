@@ -1,34 +1,30 @@
 // ========== API 配置 ==========
-// API 基础 URL 配置（禁止使用localhost，统一指向线上地址）
+// API 基础 URL 配置（支持本地和线上测试）
 // 可以通过 localStorage 设置 'api_base_url' 来覆盖默认值
+// 设置 'use_local' 为 'true' 强制使用本地地址（即使在线上也使用localhost）
 function getApiBaseUrl() {
-  // 线上部署地址
-  const PRODUCTION_URL = 'https://ai-2-7gjx.onrender.com';
-  
   // 优先从 localStorage 读取配置
   try {
     const customBaseUrl = localStorage.getItem('api_base_url');
     if (customBaseUrl && customBaseUrl.trim()) {
-      const url = customBaseUrl.trim().replace(/\/+$/, '');
-      // 禁止使用localhost
-      if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
-        return url;
-      }
-      // 如果是localhost，使用线上地址
-      console.warn('检测到localhost地址，已自动切换到线上地址');
+      // 如果明确设置了api_base_url，使用该值（允许localhost）
+      return customBaseUrl.trim().replace(/\/+$/, '');
     }
   } catch (e) {
     console.warn('无法读取 api_base_url 配置:', e);
   }
   
-  // 检查当前页面是否是localhost
+  // 检查是否强制使用本地
+  const useLocal = localStorage.getItem('use_local') === 'true';
   const currentOrigin = window.location.origin;
-  if (currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')) {
-    // 如果是localhost，使用线上地址
-    return PRODUCTION_URL;
+  const isLocalhost = currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1');
+  
+  if (useLocal || isLocalhost) {
+    // 本地环境：使用相对路径（空字符串），这样会使用当前域名和端口
+    return '';
   }
   
-  // 如果不是localhost，使用当前页面的origin
+  // 线上环境：使用当前页面的origin
   return currentOrigin;
 }
 
@@ -2139,8 +2135,9 @@ async function saveYunwuConfig() {
           alert('❌ 创建任务失败：服务器未返回任务ID。\n\n响应数据：' + JSON.stringify(result).substring(0, 300));
           return;
         }
-        
-        console.log('云雾数字人任务创建成功，任务ID:', taskId, '完整响应:', result);
+        const altTaskId = result.altTaskId || result.data?.request_id || null;
+
+        console.log('云雾数字人任务创建成功，任务ID:', taskId, altTaskId ? '备用ID: ' + altTaskId : '', '完整响应:', result);
 
         const digitalHumanId = Date.now().toString();
 
@@ -2151,6 +2148,7 @@ async function saveYunwuConfig() {
           script: hasAudio ? '(使用音频文件)' : script,
           platform: 'yunwu',
           taskId: taskId,
+          ...(altTaskId ? { altTaskId } : {}),
           status: result.status || 'processing',
           progress: 0,
           videoUrl: result.videoUrl || null,
@@ -2173,8 +2171,8 @@ async function saveYunwuConfig() {
         resetCreateForm();
         switchMenu('manage');
 
-        // 启动统一任务轮询
-        startTaskPolling(digitalHumanId, taskId, apiKey, 'yunwu');
+        // 启动统一任务轮询（云雾首次延迟 15s，便于任务在云端可查；并传 altTaskId 作备用查询）
+        startTaskPolling(digitalHumanId, taskId, apiKey, 'yunwu', altTaskId);
       } catch (error) {
         console.error('创建 云雾 数字人错误:', error);
         showLoading(false);
@@ -2183,31 +2181,52 @@ async function saveYunwuConfig() {
     }
     
     // 开始轮询任务状态（支持 HeyGen / 云雾）
-    function startTaskPolling(digitalHumanId, taskId, apiKey, provider = 'heygen') {
-      // 如果已有轮询，先清除
+    // altId：云雾备用任务 ID（如 request_id），查询失败时会由后端用其重试
+    function startTaskPolling(digitalHumanId, taskId, apiKey, provider = 'heygen', altId = null) {
+      // 如果已有轮询，先清除（可能是 setTimeout 或 setInterval 的 id）
       if (taskPollingIntervals.has(digitalHumanId)) {
-        clearInterval(taskPollingIntervals.get(digitalHumanId));
+        const existing = taskPollingIntervals.get(digitalHumanId);
+        if (existing != null) { clearTimeout(existing); clearInterval(existing); }
+        taskPollingIntervals.delete(digitalHumanId);
       }
+
+      const taskUrl = () => {
+        let url = buildApiUrl(`/api/digital-human/task/${provider}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+        if (provider === 'yunwu' && altId && String(altId).trim() !== String(taskId)) {
+          url += '&altId=' + encodeURIComponent(String(altId).trim());
+        }
+        return url;
+      };
       
       let pollCount = 0;
-      const maxPolls = 300;
-      
-      const pollInterval = setInterval(async () => {
+      const maxPolls = 60;
+      let consecutiveFatal = 0; // 重大故障（如任务不存在）连续次数，出现即停止
+
+      // 统一：停止轮询并标记失败（超时、任务不存在、连续失败等）
+      const stopPollingAndFail = (errorMsg) => {
+        const cur = taskPollingIntervals.get(digitalHumanId);
+        if (cur != null) { clearTimeout(cur); clearInterval(cur); }
+        taskPollingIntervals.delete(digitalHumanId);
+        updateTaskStatus(digitalHumanId, 'failed', 0, null, errorMsg);
+        if (document.getElementById('managePanel') && !document.getElementById('managePanel').classList.contains('hidden')) {
+          loadDigitalHumans();
+        }
+      };
+
+      const runPoll = async () => {
         pollCount++;
-        
+
         if (pollCount > maxPolls) {
-          clearInterval(pollInterval);
-          taskPollingIntervals.delete(digitalHumanId);
-          updateTaskStatus(digitalHumanId, 'failed', 0, null, '任务超时，请手动刷新查看状态');
+          stopPollingAndFail('任务超时（10分钟仍未完成），已判定失败');
           return;
         }
-        
+
         try {
-          const response = await fetch(buildApiUrl(`/api/digital-human/task/${provider}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`));
-          
+          const response = await fetch(taskUrl());
+
           const contentType = response.headers.get('content-type') || '';
           let result;
-          
+
           if (contentType.includes('application/json')) {
             result = await response.json();
           } else {
@@ -2215,80 +2234,278 @@ async function saveYunwuConfig() {
             console.error('服务器返回非JSON响应:', text.substring(0, 200));
             return;
           }
-          
+
           if (result.success) {
-            const status = result.status;
+            consecutiveFatal = 0; // 成功则重置
+            const rawStatus = (result.status || '').toString().toLowerCase();
+            const status =
+              (rawStatus === 'succeed' || rawStatus === 'succeeded' || rawStatus === 'success' || rawStatus === 'completed' || rawStatus === 'done' || rawStatus === 'finish' || rawStatus === 'finished')
+                ? 'completed'
+                : (rawStatus === 'fail' || rawStatus === 'failed' || rawStatus === 'error')
+                  ? 'failed'
+                  : (result.status || 'processing');
             const progress = result.progress || 0;
             const videoUrl = result.videoUrl || result.data?.video_url;
             const error = result.error;
-            
+
             updateTaskStatus(digitalHumanId, status, progress, videoUrl, error);
-            
-            // 如果任务完成或失败，停止轮询
+
             if (status === 'completed' || status === 'failed') {
-              // 检查是否为致命错误（不可恢复的错误）
-              const isFatalError = error && (
-                error.includes('Insufficient credit') ||
-                error.includes('余额不足') ||
-                error.includes('MOVIO_PAYMENT_INSUFFICIENT_CREDIT') ||
-                error.includes('unauthorized') ||
-                error.includes('权限') ||
-                error.includes('invalid') ||
-                error.includes('forbidden')
-              );
-              
-              // 如果是致命错误，立即标记为失败
-              if (status === 'failed' && isFatalError) {
-                updateTaskStatus(digitalHumanId, 'failed', 0, null, error);
-              }
-              
-              clearInterval(pollInterval);
+              const cur = taskPollingIntervals.get(digitalHumanId);
+              if (cur != null) { clearTimeout(cur); clearInterval(cur); }
               taskPollingIntervals.delete(digitalHumanId);
-              
-              // 如果失败，显示错误提示
-              if (status === 'failed') {
+              if (status === 'completed') {
+                if (document.getElementById('managePanel') && !document.getElementById('managePanel').classList.contains('hidden')) {
+                  loadDigitalHumans();
+                }
+              } else if (status === 'failed') {
+                const isFatalError = error && (
+                  error.includes('Insufficient credit') ||
+                  error.includes('余额不足') ||
+                  error.includes('MOVIO_PAYMENT_INSUFFICIENT_CREDIT') ||
+                  error.includes('unauthorized') ||
+                  error.includes('权限') ||
+                  error.includes('invalid') ||
+                  error.includes('forbidden')
+                );
+                if (isFatalError) {
+                  updateTaskStatus(digitalHumanId, 'failed', 0, null, error);
+                }
                 const errorMsg = error || '任务失败，原因未知';
                 console.error('任务失败:', { digitalHumanId, taskId, error: errorMsg, isFatalError });
-                
-                // 如果用户在数字人管理页面，刷新显示（错误信息会显示在列表中）
                 if (document.getElementById('managePanel') && !document.getElementById('managePanel').classList.contains('hidden')) {
                   loadDigitalHumans();
                 } else if (isFatalError) {
-                  // 如果不在管理页面且是致命错误，显示弹窗提示
-                  alert(`❌ 数字人创建失败\n\n任务ID: ${taskId}\n错误信息: ${errorMsg}\n\n请前往"数字人管理"查看详细信息。`);
+                  alert('❌ 数字人创建失败\n\n任务ID: ' + taskId + '\n错误信息: ' + errorMsg + '\n\n请前往"数字人管理"查看详细信息。');
                 }
               }
             }
           } else {
-            // 如果查询失败，记录错误但不停止轮询（可能是临时网络问题）
-            console.error('查询任务状态失败:', { digitalHumanId, taskId, error: result.message });
-            
-            // 检查是否是任务不存在的错误
-            if (result.message && /task.*not.*exist|任务不存在|task_not_exist/i.test(result.message.toLowerCase())) {
-              // 任务不存在，停止轮询并标记为失败
-              clearInterval(pollInterval);
-              taskPollingIntervals.delete(digitalHumanId);
-              updateTaskStatus(digitalHumanId, 'failed', 0, null, `任务不存在：${result.message || 'task_not_exist'}`);
-              console.error('任务不存在，停止轮询:', { digitalHumanId, taskId });
+            const msg = (result.message || '').toLowerCase();
+            const isTaskNotExist = /task.*not.*exist|任务不存在|task_not_exist/i.test(msg);
+            if (isTaskNotExist) {
+              consecutiveFatal++;
+              console.error('重大故障（任务不存在），停止轮询:', { digitalHumanId, taskId, error: result.message });
+              stopPollingAndFail('任务不存在：' + (result.message || 'task_not_exist'));
               return;
             }
-            
-            // 如果连续多次失败，停止轮询
+            consecutiveFatal = 0;
+            console.error('查询任务状态失败:', { digitalHumanId, taskId, error: result.message });
             if (pollCount > 10 && pollCount % 5 === 0) {
-              clearInterval(pollInterval);
-              taskPollingIntervals.delete(digitalHumanId);
-              updateTaskStatus(digitalHumanId, 'failed', 0, null, `查询状态失败: ${result.message || '未知错误'}`);
-              console.error('连续查询失败，停止轮询:', { digitalHumanId, taskId });
+              console.error('连续多次失败，停止轮询:', { digitalHumanId, taskId });
+              stopPollingAndFail('查询状态失败: ' + (result.message || '未知错误'));
             }
           }
-        } catch (error) {
-          console.error('轮询任务状态错误:', error);
+        } catch (err) {
+          console.error('轮询任务状态错误:', err);
         }
-      }, 10000); // 每10秒查询一次
-      
-      taskPollingIntervals.set(digitalHumanId, pollInterval);
+      };
+
+      if (provider === 'yunwu') {
+        // 云雾创建后需数秒才可查询，首次轮询延迟 15s，之后每 10s
+        const timeoutId = setTimeout(() => {
+          runPoll();
+          const intervalId = setInterval(runPoll, 10000);
+          taskPollingIntervals.set(digitalHumanId, intervalId);
+        }, 15000);
+        taskPollingIntervals.set(digitalHumanId, timeoutId);
+      } else {
+        runPoll();
+        const intervalId = setInterval(runPoll, 10000);
+        taskPollingIntervals.set(digitalHumanId, intervalId);
+      }
     }
-    
+
+    // 手动停止该数字人的任务轮询（重大故障或用户主动停止时调用）
+    function stopTaskPollingForDigitalHuman(digitalHumanId) {
+      if (!taskPollingIntervals.has(digitalHumanId)) {
+        return;
+      }
+      const cur = taskPollingIntervals.get(digitalHumanId);
+      if (cur != null) {
+        clearTimeout(cur);
+        clearInterval(cur);
+      }
+      taskPollingIntervals.delete(digitalHumanId);
+      updateTaskStatus(digitalHumanId, 'failed', 0, null, '用户已停止查询');
+      if (document.getElementById('managePanel') && !document.getElementById('managePanel').classList.contains('hidden')) {
+        loadDigitalHumans();
+      }
+    }
+
+    // ========== 数字人管理：按任务ID查询视频（10秒轮询，10分钟超时） ==========
+    const taskIdQueryKeyPrefix = 'taskIdQuery_';
+
+    function normalizeTaskStatus(status) {
+      const s = (status || '').toString().toLowerCase();
+      if (['succeed', 'succeeded', 'success', 'completed', 'done', 'finish', 'finished'].includes(s)) return 'completed';
+      if (['fail', 'failed', 'error'].includes(s)) return 'failed';
+      return status || 'processing';
+    }
+
+    function renderTaskIdQueryStatus(text, type = 'info') {
+      const el = document.getElementById('taskIdQueryStatus');
+      if (!el) return;
+      const color =
+        type === 'success' ? 'var(--success)' :
+        type === 'error' ? 'var(--danger)' :
+        type === 'warning' ? 'var(--warning)' :
+        'var(--text-secondary)';
+      el.style.color = color;
+      el.textContent = text;
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderTaskIdQueryResult(result) {
+      const container = document.getElementById('taskIdQueryResult');
+      if (!container) return;
+
+      if (!result) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const status = normalizeTaskStatus(result.status);
+      const progress = result.progress || 0;
+      const videoUrl = result.videoUrl || result.data?.video_url || result.data?.url || '';
+      const message = result.message || result.error || '';
+
+      let html = `
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px;">
+          <div style="display:flex; justify-content: space-between; gap: 12px; align-items:center;">
+            <div style="font-weight: 700;">状态：${status}</div>
+            <div style="color: var(--text-secondary); font-size: 0.9rem;">进度：${progress || 0}</div>
+          </div>
+      `;
+
+      if (message && status !== 'completed') {
+        html += `<div style="margin-top: 8px; color: var(--text-secondary); white-space: pre-wrap;">${escapeHtml(message)}</div>`;
+      }
+
+      if (videoUrl) {
+        html += `
+          <div style="margin-top: 12px;">
+            <div style="font-weight: 700; margin-bottom: 8px;">🎬 视频结果</div>
+            <video controls style="width: 100%; border-radius: 12px; background: #000;" src="${videoUrl}"></video>
+            <div style="margin-top: 8px; display:flex; gap: 10px; flex-wrap: wrap;">
+              <a class="btn secondary" href="${videoUrl}" target="_blank" rel="noopener" style="text-decoration:none; padding: 10px 14px;">🔗 打开链接</a>
+              <a class="btn primary" href="${videoUrl}" download style="text-decoration:none; padding: 10px 14px;">⬇️ 下载视频</a>
+            </div>
+            <div style="margin-top: 8px; color: var(--text-secondary); font-size: 0.85rem; word-break: break-all;">${videoUrl}</div>
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    function stopTaskIdQueryPolling() {
+      try {
+        const providerEl = document.getElementById('taskIdQueryProvider');
+        const taskIdEl = document.getElementById('taskIdQueryInput');
+        const provider = providerEl ? providerEl.value : 'yunwu';
+        const taskId = taskIdEl ? taskIdEl.value.trim() : '';
+        const key = `${taskIdQueryKeyPrefix}${provider}_${taskId || 'current'}`;
+        if (taskPollingIntervals.has(key)) {
+          clearInterval(taskPollingIntervals.get(key));
+          taskPollingIntervals.delete(key);
+        }
+      } catch {}
+      renderTaskIdQueryStatus('已停止查询', 'warning');
+    }
+
+    async function startTaskIdQueryPolling() {
+      const providerEl = document.getElementById('taskIdQueryProvider');
+      const taskIdEl = document.getElementById('taskIdQueryInput');
+      const provider = providerEl ? providerEl.value : 'yunwu';
+      const taskId = taskIdEl ? taskIdEl.value.trim() : '';
+
+      if (!taskId) {
+        renderTaskIdQueryStatus('请输入任务ID', 'error');
+        return;
+      }
+
+      // 读取对应API Key
+      const apiKey = provider === 'yunwu' ? getYunwuApiKey() : getHeyGenApiKey();
+      if (!apiKey) {
+        renderTaskIdQueryStatus(`未检测到 ${provider === 'yunwu' ? '云雾' : 'HeyGen'} API Key，请先在“创建数字人”页面配置并保存`, 'error');
+        return;
+      }
+
+      const key = `${taskIdQueryKeyPrefix}${provider}_${taskId}`;
+      // 如果已有轮询，先清除
+      if (taskPollingIntervals.has(key)) {
+        clearInterval(taskPollingIntervals.get(key));
+        taskPollingIntervals.delete(key);
+      }
+
+      renderTaskIdQueryResult(null);
+      renderTaskIdQueryStatus(`开始查询：${provider}/${taskId}（每10秒一次，最长10分钟）`, 'info');
+
+      const pollIntervalMs = 10000;
+      const maxPolls = 60; // 10分钟
+      let pollCount = 0;
+
+      const pollInterval = setInterval(async () => {
+        pollCount++;
+
+        if (pollCount > maxPolls) {
+          clearInterval(pollInterval);
+          taskPollingIntervals.delete(key);
+          renderTaskIdQueryStatus('查询超时（10分钟仍未完成），已判定失败', 'error');
+          renderTaskIdQueryResult({ success: false, status: 'failed', message: '查询超时（10分钟）' });
+          return;
+        }
+
+        try {
+          const resp = await fetch(buildApiUrl(`/api/digital-human/task/${provider}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`));
+          const contentType = resp.headers.get('content-type') || '';
+          let result;
+          if (contentType.includes('application/json')) {
+            result = await resp.json();
+          } else {
+            const text = await resp.text();
+            renderTaskIdQueryStatus(`服务器返回非JSON响应 (HTTP ${resp.status})`, 'error');
+            renderTaskIdQueryResult({ success: false, status: 'failed', message: text.substring(0, 200) });
+            return;
+          }
+
+          if (!result.success) {
+            // 继续轮询，但展示最新错误
+            renderTaskIdQueryStatus(`查询中（第${pollCount}/${maxPolls}次）：${result.message || '查询失败'}`, 'warning');
+            renderTaskIdQueryResult({ ...result, status: 'processing' });
+            return;
+          }
+
+          const status = normalizeTaskStatus(result.status);
+          renderTaskIdQueryResult(result);
+          renderTaskIdQueryStatus(`查询中（第${pollCount}/${maxPolls}次）：状态=${status}${result.progress ? `，进度=${result.progress}` : ''}`, 'info');
+
+          if (status === 'completed') {
+            clearInterval(pollInterval);
+            taskPollingIntervals.delete(key);
+            renderTaskIdQueryStatus('✅ 查询成功：任务已完成', 'success');
+          } else if (status === 'failed') {
+            clearInterval(pollInterval);
+            taskPollingIntervals.delete(key);
+            renderTaskIdQueryStatus('❌ 查询失败：任务失败', 'error');
+          }
+        } catch (e) {
+          renderTaskIdQueryStatus('查询异常：' + (e && e.message ? e.message : String(e)), 'warning');
+        }
+      }, pollIntervalMs);
+      taskPollingIntervals.set(key, pollInterval);
+    }
+
     // 更新任务状态
     function updateTaskStatus(digitalHumanId, status, progress, videoUrl, error) {
       const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
@@ -2431,6 +2648,7 @@ if (dh.status) {
   if (dh.status === 'processing') {
     const progress = dh.progress || 0;
     const estimatedTime = dh.platform === 'heygen' ? '1-3分钟' : '2-5分钟';
+    const isPolling = taskPollingIntervals.has(dh.id);
     
     statusBadge = `
       <div style="margin-top: 8px; padding: 12px; background: linear-gradient(135deg, rgba(24, 144, 255, 0.1), rgba(24, 144, 255, 0.05)); border: 1px solid var(--primary); border-radius: 8px;">
@@ -2444,9 +2662,10 @@ if (dh.status) {
         <div style="width: 100%; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; margin-bottom: 6px;">
           <div style="width: ${progress}%; height: 100%; background: linear-gradient(90deg, var(--primary), #52c41a); transition: width 0.3s;"></div>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.75rem; color: var(--text-secondary);">
           <span>任务ID: ${dh.taskId ? dh.taskId.substring(0, 12) + '...' : 'N/A'}</span>
           <span>预估: ${estimatedTime}</span>
+          ${isPolling ? `<button type="button" onclick="stopTaskPollingForDigitalHuman('${dh.id}')" style="padding: 4px 10px; background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.5); border-radius: 4px; font-size: 0.75rem; cursor: pointer;">⏹️ 停止查询</button>` : ''}
         </div>
       </div>
     `;
@@ -2458,8 +2677,10 @@ if (dh.status) {
       </div>
     `;
   } else if (dh.status === 'failed') {
-    // 简化的错误显示
+    // 简化的错误显示；云雾失败/任务不存在时可手动输入任务ID重新查询
     const errorPreview = dh.error ? dh.error.substring(0, 50) + (dh.error.length > 50 ? '...' : '') : '未知错误';
+    const isTaskNotExist = dh.error && /任务不存在|task_not_exist/i.test(dh.error);
+    const showManualTaskId = dh.platform === 'yunwu' && (isTaskNotExist || dh.status === 'failed');
     
     statusBadge = `
       <div style="margin-top: 8px; padding: 10px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
@@ -2468,10 +2689,27 @@ if (dh.status) {
           <span style="font-size: 0.85rem; color: #ef4444; font-weight: 600;">创建失败</span>
         </div>
         ${dh.error ? `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">${errorPreview}</div>` : ''}
-        <button onclick="retryTask('${dh.id}')" style="padding: 4px 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-          <span>🔄</span>
-          <span>重试</span>
-        </button>
+        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+          ${dh.taskId ? `
+            <button onclick="requeryTaskStatus('${dh.id}')" style="padding: 4px 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+              <span>🔎</span>
+              <span>重新查询</span>
+            </button>
+          ` : ''}
+          <button onclick="retryTask('${dh.id}')" style="padding: 4px 12px; background: rgba(255,255,255,0.08); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+            <span>🔄</span>
+            <span>重新创建</span>
+          </button>
+        </div>
+        ${showManualTaskId ? `
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08);">
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">若云雾控制台有不同任务ID，可输入后重新查询：</div>
+          <div style="display:flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="requeryTaskId_${dh.id}" placeholder="输入云雾控制台任务ID" value="${(dh.taskId || '')}" style="flex:1; min-width: 140px; padding: 6px 10px; font-size: 0.8rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);">
+            <button onclick="requeryWithNewTaskId('${dh.id}')" style="padding: 6px 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer; white-space: nowrap;">用新ID查询</button>
+          </div>
+        </div>
+        ` : ''}
       </div>
     `;
   }
@@ -2506,6 +2744,8 @@ if (dh.status) {
               <button class="history-btn" onclick="previewDigitalHumanVideo('${dh.id}')">👁️ 预览</button>
               ${dh.videoUrl || dh.videoFile?.dataUrl ? `<button class="history-btn" onclick="downloadDigitalHumanVideo('${dh.id}')">📥 下载</button>` : ''}
             ` : ''}
+            ${dh.taskId ? `<button class="history-btn" onclick="requeryTaskStatus('${dh.id}')">🔎 重新查询</button>` : ''}
+            ${dh.status === 'processing' && taskPollingIntervals.has(dh.id) ? `<button class="history-btn" onclick="stopTaskPollingForDigitalHuman('${dh.id}')" style="color: var(--warning);">⏹️ 停止查询</button>` : ''}
             ${dh.platform === 'heygen' && dh.status === 'processing' ? `<button class="history-btn" onclick="refreshTaskStatus('${dh.id}')">🔄 刷新</button>` : ''}
             ${dh.platform === 'yunwu' && dh.status === 'processing' ? `<button class="history-btn" onclick="refreshYunwuTaskStatus('${dh.id}')">🔄 刷新</button>` : ''}
             <button class="history-btn" onclick="deleteDigitalHuman('${dh.id}')">🗑️ 删除</button>
@@ -2513,6 +2753,66 @@ if (dh.status) {
         </div>
       `;
       }).join('');
+    }
+
+    // 重新查询（不重新创建）：用已有 taskId 启动10秒轮询，10分钟超时失败
+    function requeryTaskStatus(digitalHumanId) {
+      const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
+      const dh = digitalHumans.find(d => d.id === digitalHumanId);
+      if (!dh || !dh.taskId) {
+        alert('无法重新查询：缺少任务ID');
+        return;
+      }
+
+      const provider = dh.platform || dh.provider || 'yunwu';
+      const apiKey = provider === 'yunwu' ? getYunwuApiKey() : getHeyGenApiKey();
+      if (!apiKey) {
+        alert(`请先配置 ${provider === 'yunwu' ? '云雾' : 'HeyGen'} API Key`);
+        return;
+      }
+
+      // 先把状态设为 processing，清理错误，触发UI更新
+      updateTaskStatus(digitalHumanId, 'processing', dh.progress || 0, dh.videoUrl || null, null);
+      // 启动统一轮询（云雾首次延迟 15s 并传 altTaskId）
+      const altId = (provider === 'yunwu' && dh.altTaskId) ? dh.altTaskId : null;
+      startTaskPolling(digitalHumanId, dh.taskId, apiKey, provider, altId);
+      alert(`已开始重新查询任务状态：${provider}/${dh.taskId}\n\n每10秒查询一次，最长10分钟。`);
+    }
+
+    // 手动输入任务ID重新查询（云雾创建失败/任务不存在时用新ID重试）
+    function requeryWithNewTaskId(digitalHumanId) {
+      const inputEl = document.getElementById('requeryTaskId_' + digitalHumanId);
+      const newTaskId = inputEl ? String(inputEl.value || '').trim() : '';
+      if (!newTaskId) {
+        alert('请输入云雾控制台中的任务ID');
+        return;
+      }
+      const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
+      const dh = digitalHumans.find(d => d.id === digitalHumanId);
+      if (!dh) {
+        alert('未找到该数字人记录');
+        return;
+      }
+      if (dh.platform !== 'yunwu') {
+        alert('仅云雾任务支持手动输入任务ID重新查询');
+        return;
+      }
+      const apiKey = getYunwuApiKey();
+      if (!apiKey) {
+        alert('请先配置云雾 API Key');
+        return;
+      }
+      const idx = digitalHumans.findIndex(d => d.id === digitalHumanId);
+      if (idx !== -1) {
+        digitalHumans[idx].taskId = newTaskId;
+        digitalHumans[idx].altTaskId = null;
+        digitalHumans[idx].error = null;
+        localStorage.setItem('digital_humans', JSON.stringify(digitalHumans));
+      }
+      updateTaskStatus(digitalHumanId, 'processing', 0, null, null);
+      startTaskPolling(digitalHumanId, newTaskId, apiKey, 'yunwu', null);
+      loadDigitalHumans();
+      alert('已用新任务ID开始查询：' + newTaskId + '\n\n每10秒查询一次，最长10分钟。');
     }
     
     // 刷新云雾任务状态

@@ -50,10 +50,16 @@ const AI_MODELS = {
     models: ['glm-4-plus', 'glm-4-0520', 'glm-4', 'glm-4-flash', 'glm-4-air', 'glm-4-airx', 'glm-4-long', 'glm-3-turbo'],
   },
   yunwu: {
-    name: '云雾AI (chat兼容)',
+    name: '云雾AI',
     baseUrl: 'https://yunwu.ai/v1/chat/completions',
     defaultModel: 'yunwu',
     models: ['yunwu'],
+  },
+  heygen: {
+    name: 'HeyGen',
+    baseUrl: 'https://api.heygen.com/v1/chat/completions', // 注意：HeyGen主要用于数字人生成，可能不支持标准聊天API
+    defaultModel: 'heygen',
+    models: ['heygen'],
   },
 };
 
@@ -85,19 +91,37 @@ function makeHttpRequest(options, body, retries = 2) {
             const jsonData = JSON.parse(data);
 
             if (response.statusCode >= 400) {
+              // 记录详细的错误信息
               const errorMsg = jsonData.error?.message || jsonData.message || `HTTP ${response.statusCode}`;
-              reject(new Error(errorMsg));
+              const errorWithStatus = `HTTP ${response.statusCode}: ${errorMsg}`;
+              console.error('API返回错误:', {
+                statusCode: response.statusCode,
+                error: jsonData.error,
+                message: jsonData.message,
+                fullResponse: jsonData
+              });
+              reject(new Error(errorWithStatus));
             } else {
               resolve(jsonData);
             }
           } catch (e) {
-            reject(new Error(`解析响应失败: ${data.substring(0, 200)}`));
+            console.error('解析响应失败:', {
+              error: e.message,
+              responseData: data.substring(0, 500),
+              statusCode: response.statusCode
+            });
+            reject(new Error(`解析响应失败 (HTTP ${response.statusCode}): ${data.substring(0, 200)}`));
           }
         });
       });
 
       req.on('error', (error) => {
         console.error(`请求错误 (尝试 ${attemptNumber + 1}/${retries + 1}):`, error.message);
+        console.error('错误详情:', {
+          code: error.code,
+          message: error.message,
+          stack: error.stack
+        });
 
         // 对于连接错误，尝试重试
         if (
@@ -178,6 +202,24 @@ router.post('/ai/chat', async (req, res) => {
           content: m.content,
         })),
       });
+    } else if (platform === 'heygen') {
+      // HeyGen API 格式（主要用于数字人生成，聊天API可能不支持）
+      headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': apiKey,
+      };
+      const fullMessages = [];
+      if (systemPrompt) {
+        fullMessages.push({ role: 'system', content: systemPrompt });
+      }
+      fullMessages.push(...messages);
+      requestBody = JSON.stringify({
+        model: selectedModel,
+        messages: fullMessages,
+        temperature: parseFloat(temperature),
+        max_tokens: parseInt(maxTokens, 10),
+        stream: false,
+      });
     } else {
       // OpenAI 兼容格式
       headers = {
@@ -227,6 +269,12 @@ router.post('/ai/chat', async (req, res) => {
     });
   } catch (error) {
     console.error('AI聊天错误:', error);
+    console.error('错误详情:', {
+      message: error.message,
+      stack: error.stack,
+      platform: req.body?.platform,
+      model: req.body?.model
+    });
 
     // 解析错误信息
     let errorMessage = '调用AI服务失败';
@@ -234,6 +282,10 @@ router.post('/ai/chat', async (req, res) => {
 
     if (error.message) {
       const msg = error.message.toLowerCase();
+      
+      // 提取HTTP状态码
+      const httpStatusMatch = error.message.match(/http (\d+)/i);
+      const httpStatus = httpStatusMatch ? parseInt(httpStatusMatch[1]) : null;
 
       if (msg.includes('insufficient') || msg.includes('balance') || msg.includes('quota') || msg.includes('exceeded')) {
         errorMessage =
@@ -248,7 +300,7 @@ router.post('/ai/chat', async (req, res) => {
           '⏰ API Key 已过期\n\n您的API Key已过期，请前往对应平台重新获取新的API Key。\n\n常见获取入口：\n• OpenAI: platform.openai.com/api-keys\n• Groq: console.groq.com/keys\n• DeepSeek: platform.deepseek.com/api_keys\n• 通义千问: dashscope.console.aliyun.com/apiKey\n• 智谱AI: open.bigmodel.cn/usercenter/apikeys\n\n获取后请更新您的API Key配置。';
         errorType = 'expired';
       } else if (
-        msg.includes('401') ||
+        httpStatus === 401 ||
         msg.includes('unauthorized') ||
         (msg.includes('invalid') && msg.includes('key')) ||
         msg.includes('authentication')
@@ -256,22 +308,27 @@ router.post('/ai/chat', async (req, res) => {
         errorMessage =
           '🔑 API Key 无效\n\n可能的原因：\n• API Key 格式不正确（Groq的Key应以gsk_开头）\n• API Key 已过期或被禁用\n• 复制时包含了多余空格\n\n请重新获取并配置正确的API Key。';
         errorType = 'auth';
-      } else if (msg.includes('429') || msg.includes('rate') || msg.includes('limit')) {
+      } else if (httpStatus === 429 || msg.includes('rate') || msg.includes('limit')) {
         errorMessage = '⏱️ 请求过于频繁\n\n请稍等片刻后再试，或升级您的API套餐。';
         errorType = 'rate_limit';
       } else if (
-        msg.includes('no available channels') ||
-        msg.includes('no available') ||
-        msg.includes('channel unavailable') ||
-        msg.includes('service unavailable')
+        (msg.includes('no available channels') || msg.includes('channel unavailable')) &&
+        !msg.includes('解析响应失败')
       ) {
-        errorMessage =
-          '🚫 服务暂时不可用\n\n当前没有可用的服务通道处理您的请求。\n\n可能原因：\n• 服务繁忙，所有通道都在使用中\n• 该模型暂时不可用\n• 服务正在维护\n\n建议：\n• 稍等片刻后重试\n• 尝试切换到其他AI平台或模型';
+        // 云雾AI特定的错误处理
+        if (req.body?.platform === 'yunwu' || msg.includes('yunwu') || msg.includes('group')) {
+          errorMessage =
+            '🚫 云雾AI服务通道不可用\n\n当前Token分组中没有可用的服务通道处理您的请求。\n\n可能原因：\n• Token分组（Group）配置不正确\n• 该分组不包含聊天API服务\n• 服务通道暂时繁忙或不可用\n\n解决方案：\n1. 访问 https://yunwu.ai/token 检查Token配置\n2. 确保Token的分组（Group）包含聊天API服务\n3. 如果分组不正确，请创建新Token并选择正确的分组\n4. 稍等片刻后重试\n\n💡 提示：云雾AI的聊天API和数字人API可能需要不同的分组配置。';
+        } else {
+          // 其他平台的通用错误
+          errorMessage =
+            '🚫 服务暂时不可用\n\n当前没有可用的服务通道处理您的请求。\n\n可能原因：\n• 服务繁忙，所有通道都在使用中\n• 该模型暂时不可用\n• 服务正在维护\n\n建议：\n• 稍等片刻后重试\n• 尝试切换到其他AI平台或模型';
+        }
         errorType = 'unavailable';
-      } else if (msg.includes('500') || msg.includes('502') || msg.includes('503')) {
-        errorMessage = '🔧 AI服务暂时不可用\n\n服务器正在维护或出现故障，请稍后再试。';
+      } else if (httpStatus === 500 || httpStatus === 502 || httpStatus === 503 || msg.includes('500') || msg.includes('502') || msg.includes('503')) {
+        errorMessage = `🔧 AI服务暂时不可用\n\n服务器返回错误 (HTTP ${httpStatus || '500'})，可能原因：\n• 服务器正在维护\n• 服务暂时故障\n• API端点不可用\n\n请稍后再试，或尝试切换到其他AI平台。\n\n原始错误: ${error.message.substring(0, 100)}`;
         errorType = 'server';
-      } else if (msg.includes('timeout')) {
+      } else if (msg.includes('timeout') || msg.includes('请求超时')) {
         errorMessage = '⏰ 请求超时\n\n服务器响应时间过长，请稍后再试或缩短您的问题。';
         errorType = 'timeout';
       } else if (
@@ -289,12 +346,23 @@ router.post('/ai/chat', async (req, res) => {
         errorMessage =
           '🔌 连接中断\n\n与AI服务的连接被断开，可能原因：\n• 网络不稳定\n• 需要科学上网访问该API\n• 服务器暂时繁忙\n\n请检查网络后重试。';
         errorType = 'connection';
+      } else if (msg.includes('解析响应失败')) {
+        errorMessage = `🔧 服务器响应格式错误\n\n无法解析AI服务的响应，可能原因：\n• 服务器返回了非JSON格式的响应\n• 响应数据格式不正确\n• 服务暂时异常\n\n原始错误: ${error.message}`;
+        errorType = 'parse_error';
       } else {
-        errorMessage = error.message;
+        // 显示原始错误信息，但限制长度
+        errorMessage = error.message.length > 200 
+          ? error.message.substring(0, 200) + '...' 
+          : error.message;
       }
     }
 
-    res.status(500).json({ success: false, message: errorMessage, errorType });
+    res.status(500).json({ 
+      success: false, 
+      message: errorMessage, 
+      errorType,
+      originalError: process.env.NODE_ENV === 'development' ? error.message : undefined // 开发环境显示原始错误
+    });
   }
 });
 
@@ -395,8 +463,13 @@ router.post('/ai/chat/stream', async (req, res) => {
               errorMsg = '🔑 API Key 无效，请检查并重新配置正确的API Key';
             } else if (msgLower.includes('429') || msgLower.includes('rate') || msgLower.includes('limit')) {
               errorMsg = '⏱️ 请求过于频繁，请稍后再试';
-            } else if (msgLower.includes('no available channels') || msgLower.includes('no available') || msgLower.includes('channel unavailable')) {
-              errorMsg = '🚫 服务暂时不可用 - 当前没有可用的服务通道，请稍后重试或尝试其他模型';
+            } else if (msgLower.includes('no available channels') || msgLower.includes('channel unavailable')) {
+              // 云雾AI特定的错误处理
+              if (req.body?.platform === 'yunwu' || msgLower.includes('yunwu') || msgLower.includes('group')) {
+                errorMsg = '🚫 云雾AI服务通道不可用 - Token分组配置可能不正确，请访问 https://yunwu.ai/token 检查配置';
+              } else {
+                errorMsg = '🚫 服务暂时不可用 - 当前没有可用的服务通道，请稍后重试或尝试其他模型';
+              }
             }
             
             res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);

@@ -361,6 +361,118 @@ function analyzeYunwuApiError(response, responseData, httpStatus) {
   return null; // 未知错误类型，返回null让调用者处理
 }
 
+// 临时资源存储（供「大图/大音频→URL」规避 431，key=token, value={ type, buffer, createdAt }）
+const tempAssetStore = new Map();
+const TEMP_ASSET_MAX_ENTRIES = 80;
+const TEMP_ASSET_TTL_MS = 60 * 60 * 1000;
+function sweepTempAssets() {
+  const now = Date.now();
+  for (const [k, v] of tempAssetStore.entries()) {
+    if (v && (now - (v.createdAt || 0)) > TEMP_ASSET_TTL_MS) tempAssetStore.delete(k);
+  }
+  while (tempAssetStore.size > TEMP_ASSET_MAX_ENTRIES) {
+    let oldest = null, oldestT = Infinity;
+    for (const [k, v] of tempAssetStore.entries()) {
+      const t = v && v.createdAt ? v.createdAt : 0;
+      if (t < oldestT) { oldestT = t; oldest = k; }
+    }
+    if (oldest != null) tempAssetStore.delete(oldest); else break;
+  }
+}
+
+// 上传临时资源，返回可公网访问的 URL，供诵读/卖货时传 URL 而非大 base64，从而避免 431
+router.post('/upload-temp-asset', async (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    const { type, content } = req.body || {};
+    if (!content || typeof content !== 'string') {
+      return res.json({ success: false, message: '请提供 content（Base64 字符串）' });
+    }
+    const t = (type && String(type).toLowerCase()) || 'image';
+    if (t !== 'image' && t !== 'audio') {
+      return res.json({ success: false, message: 'type 只能为 image 或 audio' });
+    }
+    let raw = String(content).trim();
+    if (raw.startsWith('data:')) {
+      const i = raw.indexOf(',');
+      raw = i >= 0 ? raw.slice(i + 1) : '';
+    }
+    raw = raw.replace(/[\s\n\r]/g, '');
+    if (!/^[A-Za-z0-9+/=]+$/.test(raw)) {
+      return res.json({ success: false, message: 'content 须为有效 Base64' });
+    }
+    const maxLen = t === 'image' ? 14 * 1024 * 1024 : 7 * 1024 * 1024;
+    if (raw.length > maxLen) {
+      return res.json({ success: false, message: t === 'image' ? '图片 Base64 过长（≤10MB）' : '音频 Base64 过长（≤5MB）' });
+    }
+    const buffer = Buffer.from(raw, 'base64');
+    const token = `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    sweepTempAssets();
+    tempAssetStore.set(token, { type: t, buffer, createdAt: Date.now() });
+    const baseUrl = (process.env.DEPLOY_URL || process.env.CALLBACK_URL || '').trim();
+    const host = baseUrl ? new URL(baseUrl).origin : `${req.protocol || 'http'}://${req.get('host') || req.hostname || 'localhost'}`;
+    const url = `${host}/api/temp-asset/${token}`;
+    return res.json({ success: true, url, token });
+  } catch (err) {
+    console.error('upload-temp-asset error:', err);
+    return res.json({ success: false, message: err.message || '上传失败' });
+  }
+});
+
+// 按 token 返回临时资源内容，供云雾/第三方拉取
+router.get('/temp-asset/:token', (req, res) => {
+  const token = req.params.token;
+  if (!token) return res.status(404).send('Not Found');
+  const entry = tempAssetStore.get(token);
+  if (!entry || !entry.buffer) return res.status(404).send('Not Found');
+  const ct = entry.type === 'audio' ? 'audio/mpeg' : 'image/jpeg';
+  res.setHeader('Content-Type', ct);
+  res.setHeader('Cache-Control', 'public, max-age=1800');
+  res.send(entry.buffer);
+});
+
+// 媒体代理：用于前端跨域加载视频（供「使用原视频中的声音」从视频提取音频）
+router.get('/proxy-media', async (req, res) => {
+  try {
+    const rawUrl = req.query.url;
+    if (!rawUrl || typeof rawUrl !== 'string') {
+      return res.status(400).send('缺少 url 参数');
+    }
+    const url = rawUrl.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return res.status(400).send('只允许 http/https 地址');
+    }
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch (e) {
+      return res.status(400).send('URL 格式无效');
+    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const resp = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: { 'User-Agent': 'AI-DigitalHuman-Platform/1.0' },
+    });
+    clearTimeout(timeoutId);
+    if (!resp.ok) {
+      return res.status(resp.status).send('上游请求失败');
+    }
+    const contentType = resp.headers.get('content-type') || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    const buf = await resp.arrayBuffer();
+    res.send(Buffer.from(buf));
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      return res.status(504).send('请求超时');
+    }
+    console.error('proxy-media error:', err.message);
+    res.status(500).send(err.message || '代理失败');
+  }
+});
+
 // ========== HeyGen API ==========
 
 // HeyGen 获取可用语音列表
@@ -435,7 +547,7 @@ router.get('/heygen/voices', async (req, res) => {
 async function getVoicesFromAvatars(apiKey, res) {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     const response = await fetch('https://api.heygen.com/v2/avatars', {
       method: 'GET',
@@ -1368,6 +1480,121 @@ router.post('/yunwu/digital-human', async (req, res) => {
   }
 });
 
+// 云雾 API：诵读/卖货二次创作（使用已创建数字人的形象图 + 音频生成视频）
+// POST body: { apiKey, imageUrl, audioFile }，与 /yunwu/digital-human 的 image+audio 规范一致
+router.post('/yunwu/recite-video', async (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    const { apiKey, imageUrl, audioFile } = req.body;
+
+    if (!apiKey || !apiKey.trim()) {
+      return res.json({ success: false, message: '请提供云雾 API Key' });
+    }
+    if (!imageUrl || !String(imageUrl).trim()) {
+      return res.json({ success: false, message: '请提供数字人参考图（imageUrl，Base64 或可公网访问的 URL）' });
+    }
+    if (!audioFile || !String(audioFile).trim()) {
+      return res.json({ success: false, message: '请提供诵读/推广音频（audioFile，Base64 或可公网访问的 URL）' });
+    }
+
+    let finalImage = String(imageUrl).trim();
+    if (finalImage.startsWith('data:')) {
+      const i = finalImage.indexOf(',');
+      finalImage = i >= 0 ? finalImage.slice(i + 1) : finalImage;
+    }
+    finalImage = finalImage.replace(/[\s\n\r]/g, '');
+    if (!/^[A-Za-z0-9+/=]+$/.test(finalImage) && !finalImage.startsWith('http')) {
+      return res.json({ success: false, message: '图片格式无效' });
+    }
+
+    let raw = String(audioFile).trim();
+    if (raw.startsWith('data:')) {
+      const i = raw.indexOf(',');
+      raw = i >= 0 ? raw.slice(i + 1) : raw;
+    }
+    raw = raw.replace(/[\s\n\r]/g, '');
+    if (!/^[A-Za-z0-9+/=]+$/.test(raw) && !raw.startsWith('http')) {
+      return res.json({ success: false, message: '音频格式无效，请提供 .mp3/.wav/.m4a/.aac 的 Base64 或可公网访问的 URL' });
+    }
+    if (raw.length > 7 * 1024 * 1024) {
+      return res.json({ success: false, message: '音频文件过大，请 ≤5MB' });
+    }
+
+    const requestBody = {
+      image: finalImage,
+      audio_id: '',
+      sound_file: raw,
+      prompt: '',
+      mode: 'std',
+      callback_url: '',
+      external_task_id: `recite_${Date.now()}`,
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    let response;
+    try {
+      response = await fetch('https://yunwu.ai/kling/v1/videos/avatar/image2video', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey.trim()}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'AI-DigitalHuman-Platform/1.0',
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    const parsed = await parseResponse(response, '云雾诵读视频接口');
+    if (parsed.error) {
+      return res.json({ success: false, message: parsed.message });
+    }
+    const data = parsed.data;
+
+    if (!response.ok) {
+      const msg = data?.message || data?.error || data?.msg || `请求失败 (${response.status})`;
+      return res.json({ success: false, message: msg });
+    }
+
+    // 兼容多种云雾响应结构（含三层 data.data.data.task_id、request_id 等）
+    const inner = data?.data;
+    const inner2 = (inner && typeof inner === 'object') ? inner.data : null;
+    const fromInner = (o) => (o && typeof o === 'object') ? (o.task_id ?? o.id ?? null) : null;
+    const queryId = fromInner(inner2) ?? fromInner(inner) ?? data?.task_id ?? data?.id ?? null;
+    let taskId = queryId ?? data?.request_id ?? data?.external_task_id ?? null;
+    if (taskId != null) taskId = String(taskId);
+
+    if (!taskId) {
+      console.warn('云雾诵读视频接口响应中未找到任务ID:', {
+        status: response?.status,
+        ok: response?.ok,
+        dataKeys: data ? Object.keys(data) : [],
+        dataDataKeys: data?.data ? Object.keys(data.data) : [],
+        preview: JSON.stringify(data).substring(0, 400)
+      });
+      return res.json({
+        success: false,
+        message: '云雾未返回任务ID。若云雾控制台已显示创建成功，请用控制台中的任务ID在「作品管理」中刷新该任务。',
+        debug: data ? { keys: Object.keys(data), sample: JSON.stringify(data).substring(0, 300) } : null,
+      });
+    }
+
+    res.json({
+      success: true,
+      taskId,
+      id: taskId,
+      status: data?.status || 'processing',
+      data,
+    });
+  } catch (err) {
+    console.error('云雾诵读视频错误:', err);
+    res.json({ success: false, message: err.message || '云雾诵读视频创建失败' });
+  }
+});
+
 // 云雾数字人API测试
 // 用于验证 API Key 是否有效且具备数字人接口权限
 router.post('/yunwu/test', async (req, res) => {
@@ -1586,6 +1813,128 @@ router.post('/yunwu/test', async (req, res) => {
       success: false,
       message: error.message || '测试过程中发生错误',
     });
+  }
+});
+
+// ========== 云雾可灵图像生成 API（文生图） ==========
+// API文档：POST https://yunwu.ai/kling/v1/images/generations
+const YUNWU_IMAGES_BASE = 'https://yunwu.ai/kling/v1/images/generations';
+
+// 文生图接口测试（必须放在 /generations/:id 之前，避免被 :id 匹配掉）
+router.post('/yunwu/images/test', async (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    const apiKey = (req.body && req.body.apiKey) || req.headers['x-api-key'] || (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
+    if (!apiKey || !String(apiKey).trim()) {
+      return res.json({ success: false, message: '请提供云雾 API Key' });
+    }
+    const key = String(apiKey).trim();
+    const testBody = { model_name: 'kling-v1', prompt: 'test', n: 1 };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const response = await fetch(YUNWU_IMAGES_BASE, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testBody),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const text = await response.text();
+    let data;
+    try { data = text ? JSON.parse(text) : {}; } catch (e) { data = {}; }
+    const errMsg = (data?.message || data?.error?.message || data?.error || data?.detail || '').toLowerCase();
+    if (response.ok) {
+      return res.json({ success: true, message: 'API Key 验证通过！文生图接口可用' });
+    }
+    if (response.status === 400 && (/prompt|invalid|参数|格式/i.test(errMsg) || data?.code !== undefined)) {
+      return res.json({ success: true, message: 'API Key 验证通过！文生图接口可用（测试请求参数被拒绝属正常）' });
+    }
+    if (response.status === 401 || response.status === 403) {
+      return res.json({ success: false, message: 'API Key 无效或无权限，请到云雾AI 令牌管理 检查' });
+    }
+    return res.json({
+      success: false,
+      message: data?.message || data?.error?.message || data?.error || data?.detail || `验证未通过 (HTTP ${response.status})`,
+    });
+  } catch (err) {
+    const msg = err.name === 'AbortError' ? '请求超时' : (err.message || String(err));
+    res.json({ success: false, message: msg });
+  }
+});
+
+router.post('/yunwu/images/generations', async (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    const apiKey = (req.body && req.body.apiKey) || req.headers['x-api-key'] || req.headers['authorization']?.replace(/^Bearer\s+/i, '');
+    if (!apiKey || !String(apiKey).trim()) {
+      return res.json({ success: false, message: '请提供云雾 API Key' });
+    }
+    const key = String(apiKey).trim();
+    const body = Object.assign({}, req.body);
+    delete body.apiKey;
+    if (!body.model_name) body.model_name = 'kling-v1';
+    if (body.prompt == null) body.prompt = '';
+    if (body.n == null) body.n = 1;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const response = await fetch(YUNWU_IMAGES_BASE, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const text = await response.text();
+    let data;
+    try { data = text ? JSON.parse(text) : {}; } catch (e) { data = {}; }
+    if (!response.ok) {
+      const msg = data?.message || data?.error?.message || data?.error || data?.detail || text || `请求失败 ${response.status}`;
+      return res.status(response.status >= 400 ? response.status : 500).json({ success: false, message: msg, data });
+    }
+    res.json(typeof data === 'object' && data !== null ? data : { success: true, data });
+  } catch (err) {
+    const msg = err.name === 'AbortError' ? '请求超时' : (err.message || String(err));
+    res.json({ success: false, message: msg });
+  }
+});
+
+router.get('/yunwu/images/generations/:id', async (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    const id = req.params.id;
+    const apiKey = req.headers['x-api-key'] || req.query.apiKey || (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
+    if (!apiKey || !String(apiKey).trim()) {
+      return res.json({ success: false, message: '请提供云雾 API Key' });
+    }
+    const url = `${YUNWU_IMAGES_BASE}/${encodeURIComponent(id)}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${String(apiKey).trim()}`,
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const text = await response.text();
+    let data;
+    try { data = text ? JSON.parse(text) : {}; } catch (e) { data = {}; }
+    if (!response.ok) {
+      const msg = data?.message || data?.error?.message || data?.error || data?.detail || text || `请求失败 ${response.status}`;
+      return res.status(response.status >= 400 ? response.status : 500).json({ success: false, message: msg });
+    }
+    res.json(typeof data === 'object' && data !== null ? data : { success: true, data });
+  } catch (err) {
+    const msg = err.name === 'AbortError' ? '请求超时' : (err.message || String(err));
+    res.json({ success: false, message: msg });
   }
 });
 

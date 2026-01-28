@@ -606,22 +606,12 @@
       
       <div class="step-card" style="max-width: 900px; margin: 0 auto;">
         <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择数字人形象</label>
-          
-          <!-- 选择模式切换 -->
-          <div style="display: flex; gap: 12px; margin-bottom: 16px; background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
-            <button id="reciteModeTemplate" class="btn secondary" onclick="switchReciteAvatarMode('template')" style="flex: 1; padding: 10px;">
-              📚 使用模板
-            </button>
-            <button id="reciteModeMyDigitalHuman" class="btn secondary" onclick="switchReciteAvatarMode('myDigitalHuman')" style="flex: 1; padding: 10px;">
-              👤 使用我创建的数字人
-            </button>
-          </div>
-          
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择数字人（仅限已创建并完成的数字人进行二次创作）</label>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">请先在本站「创建数字人」中完成至少一个 HeyGen 或云雾数字人，此处将列出可选形象。</p>
           <div id="reciteAvatarSelector" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; margin-bottom: 24px;">
             <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
               <div style="font-size: 2rem; margin-bottom: 8px;">⏳</div>
-              <div style="font-size: 0.85rem;">正在加载模板...</div>
+              <div style="font-size: 0.85rem;">正在加载已创建的数字人...</div>
             </div>
           </div>
           <button id="reciteRefreshBtn" class="btn secondary" onclick="loadReciteAvatars()" style="width: 100%;">
@@ -649,6 +639,17 @@
           </select>
         </div>
         
+        <div id="reciteYunwuAudioWrap" style="display: none; margin-bottom: 24px; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; border: 1px solid var(--border);">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">诵读音频 <span style="color: var(--text-secondary); font-weight: normal;">（二选一：上传或使用原视频中的声音）</span></label>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">云雾 API 需要与文案对应的音频。若该数字人由本站视频创建，可直接使用其原视频中的声音。</p>
+          <div id="reciteUseVideoSoundRow" style="display: none; margin-bottom: 12px;">
+            <button type="button" class="btn secondary" id="reciteUseVideoSoundBtn" onclick="useReciteVideoSound()" style="width: 100%;">🎬 使用该数字人原视频中的声音</button>
+            <p id="reciteVideoSoundStatus" style="font-size: 0.85rem; color: var(--primary); margin-top: 6px; display: none;">✓ 已使用原视频中的声音</p>
+          </div>
+          <div style="margin-bottom: 8px;">或上传音频：</div>
+          <input type="file" id="reciteYunwuAudioInput" accept="audio/*" onchange="handleReciteYunwuAudio(event)" style="width: 100%; padding: 8px;">
+        </div>
+        
         <div style="display: flex; gap: 12px;">
           <button class="btn primary" style="flex: 1; padding: 16px; font-size: 1rem; font-weight: 600;" onclick="createReciteVideo()">
             🚀 生成诵读视频
@@ -659,8 +660,9 @@
         </div>
       </div>
       
-      <div class="history-list" id="reciteHistoryList" style="margin-top: 40px;">
-        <!-- 动态加载历史记录 -->
+      <div style="margin-top: 40px; padding: 24px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+        <p style="margin-bottom: 12px; color: var(--text-secondary);">本功能生成的作品将统一存放在「作品管理」中，可在此查看进度、播放与下载。</p>
+        <button class="btn primary" onclick="switchMenu('works')">前往作品管理</button>
       </div>
     </div>
     
@@ -673,22 +675,12 @@
       
       <div class="step-card" style="max-width: 900px; margin: 0 auto;">
         <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择数字人形象</label>
-          
-          <!-- 选择模式切换 -->
-          <div style="display: flex; gap: 12px; margin-bottom: 16px; background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
-            <button id="promoteModeTemplate" class="btn secondary" onclick="switchPromoteAvatarMode('template')" style="flex: 1; padding: 10px;">
-              📚 使用模板
-            </button>
-            <button id="promoteModeMyDigitalHuman" class="btn secondary" onclick="switchPromoteAvatarMode('myDigitalHuman')" style="flex: 1; padding: 10px;">
-              👤 使用我创建的数字人
-            </button>
-          </div>
-          
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">选择数字人（仅限已创建并完成的数字人进行二次创作）</label>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">请先在本站「创建数字人」中完成至少一个 HeyGen 或云雾数字人，此处将列出可选形象。</p>
           <div id="promoteAvatarSelector" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; margin-bottom: 24px;">
             <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
               <div style="font-size: 2rem; margin-bottom: 8px;">⏳</div>
-              <div style="font-size: 0.85rem;">正在加载模板...</div>
+              <div style="font-size: 0.85rem;">正在加载已创建的数字人...</div>
             </div>
           </div>
           <button id="promoteRefreshBtn" class="btn secondary" onclick="loadPromoteAvatars()" style="width: 100%;">
@@ -733,6 +725,17 @@
           </select>
         </div>
         
+        <div id="promoteYunwuAudioWrap" style="display: none; margin-bottom: 24px; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; border: 1px solid var(--border);">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">推广音频 <span style="color: var(--text-secondary); font-weight: normal;">（二选一：上传或使用原视频中的声音）</span></label>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">云雾 API 需要与推广文案对应的音频。若该数字人由本站视频创建，可直接使用其原视频中的声音。</p>
+          <div id="promoteUseVideoSoundRow" style="display: none; margin-bottom: 12px;">
+            <button type="button" class="btn secondary" id="promoteUseVideoSoundBtn" onclick="usePromoteVideoSound()" style="width: 100%;">🎬 使用该数字人原视频中的声音</button>
+            <p id="promoteVideoSoundStatus" style="font-size: 0.85rem; color: var(--primary); margin-top: 6px; display: none;">✓ 已使用原视频中的声音</p>
+          </div>
+          <div style="margin-bottom: 8px;">或上传音频：</div>
+          <input type="file" id="promoteYunwuAudioInput" accept="audio/*" onchange="handlePromoteYunwuAudio(event)" style="width: 100%; padding: 8px;">
+        </div>
+        
         <div style="display: flex; gap: 12px;">
           <button class="btn primary" style="flex: 1; padding: 16px; font-size: 1rem; font-weight: 600;" onclick="createPromoteVideo()">
             🚀 生成推广视频
@@ -743,8 +746,9 @@
         </div>
       </div>
       
-      <div class="history-list" id="promoteHistoryList" style="margin-top: 40px;">
-        <!-- 动态加载历史记录 -->
+      <div style="margin-top: 40px; padding: 24px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border); text-align: center;">
+        <p style="margin-bottom: 12px; color: var(--text-secondary);">本功能生成的作品将统一存放在「作品管理」中，可在此查看进度、播放与下载。</p>
+        <button class="btn primary" onclick="switchMenu('works')">前往作品管理</button>
       </div>
     </div>
   </main>

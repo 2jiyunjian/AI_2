@@ -4789,6 +4789,10 @@
         ]
       },
       {
+        icon: '🎨', text: 'AI创作工坊', tag: { text: 'NEW', color: 'orange' },
+        directLink: 'media-studio.html'
+      },
+      {
         icon: '👤', text: '数字人', tag: { text: 'NEW', color: 'red' },
         children: [
           { text: '🇨🇳 国内数字人', page: 'digital-human-cn', tag: { text: '国产', color: 'red' }, isExternal: true, url: 'digital-human-cn.html' },
@@ -4848,6 +4852,19 @@
       let html = '';
 
       menuData.forEach((menu, index) => {
+        // 一级直接链接（无子菜单，点击跳转）
+        if (menu.directLink) {
+          html += `
+            <div class="menu-item">
+              <a class="menu-link parent" href="${menu.directLink}" style="text-decoration: none;">
+                <span class="menu-icon">${menu.icon}</span>
+                <span class="menu-text">${menu.text}</span>
+                ${menu.tag ? `<span class="menu-tag ${menu.tag.color}">${menu.tag.text}</span>` : ''}
+              </a>
+            </div>
+          `;
+          return;
+        }
         const isOpen = menu.children.some(c => c.page === currentPage) || menu.open;
         html += `
           <div class="menu-item ${isOpen ? 'open' : ''}">

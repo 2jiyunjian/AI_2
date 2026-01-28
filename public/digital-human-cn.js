@@ -84,6 +84,56 @@ function switchMenu(menu) {
 }
 window.switchMenu = switchMenu;
 
+/**
+ * 压缩图片用于存储/网络传输，避免 431 或 localStorage 超限
+ * @param {string} dataUrlOrBase64 - data URL 或纯 base64
+ * @param {number} maxWidth - 最大宽度（像素），默认 640
+ * @param {number} quality - JPEG 质量 0~1，默认 0.75
+ * @returns {Promise<string>} 压缩后的 base64（无 data: 前缀）
+ */
+function compressImageForStorage(dataUrlOrBase64, maxWidth, quality) {
+  maxWidth = maxWidth || 640;
+  quality = quality == null ? 0.75 : Math.min(1, Math.max(0, quality));
+  var str = String(dataUrlOrBase64 || '').trim();
+  if (!str) return Promise.resolve('');
+  var dataUrl = str.indexOf('data:') === 0 ? str : ('data:image/png;base64,' + str);
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      try {
+        var w = img.naturalWidth || img.width;
+        var h = img.naturalHeight || img.height;
+        if (w <= maxWidth && h <= maxWidth) {
+          w = img.naturalWidth || img.width;
+          h = img.naturalHeight || img.height;
+        } else {
+          if (w > h) {
+            h = Math.round(h * maxWidth / w);
+            w = maxWidth;
+          } else {
+            w = Math.round(w * maxWidth / h);
+            h = maxWidth;
+          }
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(str.indexOf(',') >= 0 ? str.slice(str.indexOf(',') + 1) : str); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        var out = canvas.toDataURL('image/jpeg', quality);
+        var base64 = out.indexOf(',') >= 0 ? out.slice(out.indexOf(',') + 1) : out;
+        resolve(base64);
+      } catch (e) {
+        resolve(str.indexOf(',') >= 0 ? str.slice(str.indexOf(',') + 1) : str);
+      }
+    };
+    img.onerror = function() { resolve(str.indexOf(',') >= 0 ? str.slice(str.indexOf(',') + 1) : str); };
+    img.crossOrigin = 'anonymous';
+    img.src = dataUrl;
+  });
+}
+
 // ========== 分隔的脚本块 ==========
 
 // 检查登录
@@ -94,10 +144,14 @@ if (!user) window.location.href = '/';
     let currentPlatform = 'heygen';
     let selectedAvatar = '👩‍💼';
     let selectedAvatarId = null; // 选中的 HeyGen avatar ID
-    let selectedAvatarForRecite = null; // 诵读文案选中的 avatar ID
-    let selectedAvatarForPromote = null; // 卖货推送选中的 avatar ID
-    let reciteAvatarMode = 'template'; // 诵读文案选择模式：'template' 或 'myDigitalHuman'
-    let promoteAvatarMode = 'template'; // 卖货推送选择模式：'template' 或 'myDigitalHuman'
+    let selectedAvatarForRecite = null;   // HeyGen: avatar_id；云雾: 不用于请求，仅与 digitalHumanId 配合
+    let selectedAvatarForPromote = null;
+    let selectedRecitePlatform = null;    // 'heygen' | 'yunwu'
+    let selectedReciteDigitalHumanId = null;
+    let selectedPromotePlatform = null;
+    let selectedPromoteDigitalHumanId = null;
+    let reciteAudioBase64Yunwu = null;    // 云雾诵读时上传的音频 Base64
+    let promoteAudioBase64Yunwu = null;    // 云雾卖货时上传的音频 Base64
     let heygenAvatarsCache = null; // 缓存的 avatar 列表
     let heygenVoicesCache = null; // 缓存的语音列表
     let selectedVoiceId = null; // 选中的语音ID
@@ -142,34 +196,10 @@ if (!user) window.location.href = '/';
     // 任务轮询状态管理
     const taskPollingIntervals = new Map();
     
-    // 加载诵读文案面板
+    // 加载诵读文案面板（仅使用已创建的数字人进行二次创作）
     function loadRecitePanel() {
-      // 初始化模式按钮状态
-      const templateBtn = document.getElementById('reciteModeTemplate');
-      const myDigitalHumanBtn = document.getElementById('reciteModeMyDigitalHuman');
-      if (templateBtn && myDigitalHumanBtn) {
-        if (reciteAvatarMode === 'template') {
-          templateBtn.classList.remove('secondary');
-          templateBtn.classList.add('primary');
-          myDigitalHumanBtn.classList.remove('primary');
-          myDigitalHumanBtn.classList.add('secondary');
-        } else {
-          templateBtn.classList.remove('primary');
-          templateBtn.classList.add('secondary');
-          myDigitalHumanBtn.classList.remove('secondary');
-          myDigitalHumanBtn.classList.add('primary');
-        }
-      }
-      
-      // 加载数字人列表
       loadReciteAvatars();
-      
-      // 加载历史记录
-      loadReciteHistory();
-      
-      // 加载缓存的语音列表
       loadCachedVoicesForContext('recite');
-      
       // 绑定字数统计
       const scriptInput = document.getElementById('reciteScript');
       if (scriptInput) {
@@ -178,34 +208,10 @@ if (!user) window.location.href = '/';
       }
     }
     
-    // 加载卖货推送面板
+    // 加载卖货推送面板（仅使用已创建的数字人进行二次创作）
     function loadPromotePanel() {
-      // 初始化模式按钮状态
-      const templateBtn = document.getElementById('promoteModeTemplate');
-      const myDigitalHumanBtn = document.getElementById('promoteModeMyDigitalHuman');
-      if (templateBtn && myDigitalHumanBtn) {
-        if (promoteAvatarMode === 'template') {
-          templateBtn.classList.remove('secondary');
-          templateBtn.classList.add('primary');
-          myDigitalHumanBtn.classList.remove('primary');
-          myDigitalHumanBtn.classList.add('secondary');
-        } else {
-          templateBtn.classList.remove('primary');
-          templateBtn.classList.add('secondary');
-          myDigitalHumanBtn.classList.remove('secondary');
-          myDigitalHumanBtn.classList.add('primary');
-        }
-      }
-      
-      // 加载数字人列表
       loadPromoteAvatars();
-      
-      // 加载历史记录
-      loadPromoteHistory();
-      
-      // 加载缓存的语音列表
       loadCachedVoicesForContext('promote');
-      
       // 绑定字数统计
       const descInput = document.getElementById('promoteProductDesc');
       if (descInput) {
@@ -2140,6 +2146,10 @@ async function saveYunwuConfig() {
         console.log('云雾数字人任务创建成功，任务ID:', taskId, altTaskId ? '备用ID: ' + altTaskId : '', '完整响应:', result);
 
         const digitalHumanId = Date.now().toString();
+        // 压缩后保存缩略图，避免 localStorage 过大、请求 431
+        const thumb = (typeof compressImageForStorage === 'function')
+          ? await compressImageForStorage(imageUrl, 640, 0.75)
+          : (imageUrl.indexOf(',') >= 0 ? imageUrl.slice(imageUrl.indexOf(',') + 1) : imageUrl);
 
         const digitalHuman = {
           id: digitalHumanId,
@@ -2152,7 +2162,7 @@ async function saveYunwuConfig() {
           status: result.status || 'processing',
           progress: 0,
           videoUrl: result.videoUrl || null,
-          thumbnail: imageUrl,
+          thumbnail: thumb || (imageUrl.indexOf(',') >= 0 ? imageUrl.slice(imageUrl.indexOf(',') + 1) : imageUrl),
           hasAudio: hasAudio,
           createDate: new Date().toISOString(),
           updateDate: new Date().toISOString()
@@ -3185,22 +3195,27 @@ async function retryTask(digitalHumanId) {
       }
       
       container.innerHTML = works.map(work => {
-        const typeLabel = work.type === 'product' ? '🛒 商品推广' : '🎬 其他';
-        const title = work.type === 'product' ? work.productName : work.title;
+        const typeLabel = work.type === 'recite' ? '📖 诵读文案' : work.type === 'product' ? '🛒 卖货推送' : '🎬 其他';
+        const title = work.type === 'product' ? (work.productName || work.title) : (work.title || (work.script ? work.script.substring(0, 30) + (work.script.length > 30 ? '...' : '') : '未命名'));
+        const statusLabel = work.status === 'ready' ? '已完成' : work.status === 'failed' ? '失败' : '处理中';
+        const statusBg = work.status === 'ready' ? 'var(--success)' : work.status === 'failed' ? 'var(--danger)' : 'var(--warning)';
+        const hasVideo = !!(work.videoUrl || work.video_file?.dataUrl);
+        const videoSrc = work.videoUrl || work.video_file?.dataUrl || '';
         
         return `
           <div class="history-item">
             <div class="history-header">
               <span class="history-avatar">${typeLabel}</span>
               <div class="history-meta">
-                <div class="history-platform" style="background: ${work.status === 'ready' ? 'var(--success)' : 'var(--warning)'};">${work.status === 'ready' ? '已完成' : '处理中'}</div>
+                <div class="history-platform" style="background: ${statusBg};">${statusLabel}</div>
                 <div class="history-date">${new Date(work.createDate).toLocaleString()}</div>
               </div>
             </div>
             <div class="history-script">${title}</div>
             <div class="history-actions">
-              <button class="history-btn" onclick="playWork('${work.id}')">▶️ 播放</button>
-              <button class="history-btn" onclick="downloadWork('${work.id}')">📥 下载</button>
+              ${hasVideo ? `<button class="history-btn" onclick="playWork('${work.id}')">▶️ 播放</button>` : ''}
+              ${hasVideo ? `<button class="history-btn" onclick="downloadWork('${work.id}')">📥 下载</button>` : ''}
+              ${work.status !== 'ready' && work.taskId ? `<button class="history-btn" onclick="refreshWorkInWorks('${work.id}')">🔄 刷新</button>` : ''}
               <button class="history-btn" onclick="deleteWork('${work.id}')">🗑️ 删除</button>
             </div>
           </div>
@@ -3209,11 +3224,58 @@ async function retryTask(digitalHumanId) {
     }
     
     function playWork(id) {
-      alert('播放功能开发中...');
+      const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+      const w = works.find(x => x.id === id);
+      if (!w || (!w.videoUrl && !w.video_file?.dataUrl)) {
+        alert('该作品暂无可播放视频');
+        return;
+      }
+      const url = w.videoUrl || w.video_file?.dataUrl || '';
+      if (url) window.open(url, '_blank', 'noopener');
     }
     
     function downloadWork(id) {
-      alert('下载功能开发中...');
+      const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+      const w = works.find(x => x.id === id);
+      if (!w || (!w.videoUrl && !w.video_file?.dataUrl)) {
+        alert('该作品暂无可下载视频');
+        return;
+      }
+      const url = w.videoUrl || w.video_file?.dataUrl || '';
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (w.title || w.productName || '作品') + '.mp4';
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+    
+    function refreshWorkInWorks(id) {
+      const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+      const work = works.find(w => w.id === id);
+      if (!work || !work.taskId) return;
+      const platform = work.platform || 'heygen';
+      const apiKey = platform === 'yunwu' ? (typeof getYunwuApiKey === 'function' ? getYunwuApiKey() : '') : getHeyGenApiKey();
+      if (!apiKey) {
+        alert(platform === 'yunwu' ? '请先配置云雾 API Key' : '请先配置 HeyGen API Key');
+        return;
+      }
+      const done = (status, progress, videoUrl, error) => {
+        const idx = works.findIndex(w => w.id === id);
+        if (idx === -1) return;
+        works[idx].status = status === 'completed' ? 'ready' : status;
+        works[idx].progress = progress;
+        if (videoUrl) works[idx].videoUrl = videoUrl;
+        if (error) works[idx].error = error;
+        works[idx].updateDate = new Date().toISOString();
+        localStorage.setItem('cn_dh_works', JSON.stringify(works));
+        loadWorks();
+      };
+      const url = buildApiUrl(`/api/digital-human/task/${platform}/${work.taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+      fetch(url).then(r => r.json()).then(result => {
+        if (result.success) done(result.status, result.progress || 0, result.videoUrl || result.data?.video_url, result.error);
+      }).catch(() => {});
     }
     
     function deleteWork(id) {
@@ -4919,86 +4981,24 @@ async function retryTask(digitalHumanId) {
     
     // ========== 诵读文案功能 ==========
     
-    // 切换诵读文案的数字人选择模式
-    function switchReciteAvatarMode(mode) {
-      reciteAvatarMode = mode;
-      selectedAvatarForRecite = null;
-      
-      // 更新按钮状态
-      const templateBtn = document.getElementById('reciteModeTemplate');
-      const myDigitalHumanBtn = document.getElementById('reciteModeMyDigitalHuman');
-      if (templateBtn && myDigitalHumanBtn) {
-        if (mode === 'template') {
-          templateBtn.classList.remove('secondary');
-          templateBtn.classList.add('primary');
-          myDigitalHumanBtn.classList.remove('primary');
-          myDigitalHumanBtn.classList.add('secondary');
-        } else {
-          templateBtn.classList.remove('primary');
-          templateBtn.classList.add('secondary');
-          myDigitalHumanBtn.classList.remove('secondary');
-          myDigitalHumanBtn.classList.add('primary');
-        }
-      }
-      
-      // 加载对应的列表
-      loadReciteAvatars();
-    }
-    
-    // 加载诵读文案的数字人列表（根据模式）
+    // 诵读文案、卖货推送仅使用已创建并完成的数字人（按官方能力：二次创作基于自有 avatar）
     function loadReciteAvatars() {
-      if (reciteAvatarMode === 'template') {
-        loadHeyGenAvatars('recite');
-      } else {
-        loadMyDigitalHumans('recite');
-      }
+      loadMyDigitalHumans('recite');
     }
     
-    // 切换卖货推送的数字人选择模式
-    function switchPromoteAvatarMode(mode) {
-      promoteAvatarMode = mode;
-      selectedAvatarForPromote = null;
-      
-      // 更新按钮状态
-      const templateBtn = document.getElementById('promoteModeTemplate');
-      const myDigitalHumanBtn = document.getElementById('promoteModeMyDigitalHuman');
-      if (templateBtn && myDigitalHumanBtn) {
-        if (mode === 'template') {
-          templateBtn.classList.remove('secondary');
-          templateBtn.classList.add('primary');
-          myDigitalHumanBtn.classList.remove('primary');
-          myDigitalHumanBtn.classList.add('secondary');
-        } else {
-          templateBtn.classList.remove('primary');
-          templateBtn.classList.add('secondary');
-          myDigitalHumanBtn.classList.remove('secondary');
-          myDigitalHumanBtn.classList.add('primary');
-        }
-      }
-      
-      // 加载对应的列表
-      loadPromoteAvatars();
-    }
-    
-    // 加载卖货推送的数字人列表（根据模式）
     function loadPromoteAvatars() {
-      if (promoteAvatarMode === 'template') {
-        loadHeyGenAvatars('promote');
-      } else {
-        loadMyDigitalHumans('promote');
-      }
+      loadMyDigitalHumans('promote');
     }
     
-    // 加载用户自己创建的数字人列表
+    // 加载用户自己创建的数字人列表（含 HeyGen 与 云雾已完成数字人）
     function loadMyDigitalHumans(context) {
       const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
-      
-      // 只显示已完成（completed）的数字人
-      const completedDigitalHumans = digitalHumans.filter(dh => 
-        dh.platform === 'heygen' && 
-        dh.status === 'completed' && 
-        dh.avatarId // 必须有 avatarId（使用模板创建的）
-      );
+      const completedDigitalHumans = digitalHumans.filter(dh => {
+        if (dh.status !== 'completed') return false;
+        if (dh.platform === 'heygen') return !!(dh.avatarId);
+        if (dh.platform === 'yunwu') return !!(dh.thumbnail || dh.videoUrl);
+        return false;
+      });
       
       let containerId;
       if (context === 'recite') {
@@ -5030,55 +5030,245 @@ async function retryTask(digitalHumanId) {
         return;
       }
       
-      // 渲染数字人卡片
+      const selectedId = context === 'recite' ? selectedReciteDigitalHumanId : selectedPromoteDigitalHumanId;
       container.innerHTML = completedDigitalHumans.map(dh => {
-        const isSelected = (context === 'recite' && selectedAvatarForRecite === dh.avatarId) ||
-                          (context === 'promote' && selectedAvatarForPromote === dh.avatarId);
-        
+        const isSelected = selectedId === dh.id;
         const thumbnail = dh.thumbnail || (dh.videoUrl ? dh.videoUrl : '');
         const displayName = dh.name || '未命名数字人';
-        
+        const platformLabel = dh.platform === 'yunwu' ? '云雾' : 'HeyGen';
+        const key = dh.platform === 'heygen' ? (dh.avatarId || dh.id) : dh.id;
+        const safeKey = String(key).replace(/'/g, "\\'");
+        const safeContext = String(context).replace(/'/g, "\\'");
+        const safeDhId = String(dh.id).replace(/'/g, "\\'");
+        const safePlatform = String(dh.platform).replace(/'/g, "\\'");
+
         return `
           <div class="avatar-template-item ${isSelected ? 'selected' : ''}" 
-               onclick="selectMyDigitalHuman('${dh.avatarId}', '${context}', '${dh.id}')"
+               onclick="selectMyDigitalHuman('${safePlatform}', '${safeKey}', '${safeDhId}', '${safeContext}')"
                style="cursor: pointer; padding: 12px; background: var(--bg-secondary); border-radius: 12px; border: 2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}; transition: all 0.2s;">
             ${thumbnail ? 
               `<img src="${thumbnail}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">` :
               `<div style="width: 100%; aspect-ratio: 1; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; font-size: 2rem;">👤</div>`
             }
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayName}">
-              ${displayName}
-            </div>
+            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayName}">${displayName}</div>
+            <div style="font-size: 0.7rem; color: var(--text-secondary); text-align: center; margin-top: 2px;">${platformLabel}</div>
             ${isSelected ? '<div style="text-align: center; margin-top: 4px; color: var(--primary); font-size: 0.75rem;">✓ 已选择</div>' : ''}
           </div>
         `;
       }).join('');
     }
-    
-    // 选择用户创建的数字人
-    function selectMyDigitalHuman(avatarId, context, digitalHumanId) {
-      // 清除之前的选中状态
+
+    function selectMyDigitalHuman(platform, avatarKey, digitalHumanId, context) {
       const containerId = context === 'recite' ? 'reciteAvatarSelector' : 'promoteAvatarSelector';
       const container = document.getElementById(containerId);
       if (container) {
-        container.querySelectorAll('.avatar-template-item').forEach(item => {
-          item.classList.remove('selected');
-        });
+        container.querySelectorAll('.avatar-template-item').forEach(item => item.classList.remove('selected'));
       }
-      
-      // 设置新的选中状态
+      const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
+      const dh = platform === 'yunwu' && digitalHumanId ? digitalHumans.find(function(d) { return d.id === digitalHumanId; }) : null;
+      const hasVideoUrl = !!(dh && dh.videoUrl);
       if (context === 'recite') {
-        selectedAvatarForRecite = avatarId;
-      } else if (context === 'promote') {
-        selectedAvatarForPromote = avatarId;
+        selectedRecitePlatform = platform;
+        selectedAvatarForRecite = platform === 'heygen' ? avatarKey : null;
+        selectedReciteDigitalHumanId = digitalHumanId;
+        reciteAudioBase64Yunwu = null;
+        const el = document.getElementById('reciteYunwuAudioWrap');
+        if (el) el.style.display = platform === 'yunwu' ? 'block' : 'none';
+        const inp = document.getElementById('reciteYunwuAudioInput');
+        if (inp) inp.value = '';
+        const useRow = document.getElementById('reciteUseVideoSoundRow');
+        if (useRow) useRow.style.display = (platform === 'yunwu' && hasVideoUrl) ? 'block' : 'none';
+        const statusEl = document.getElementById('reciteVideoSoundStatus');
+        if (statusEl) statusEl.style.display = 'none';
+      } else {
+        selectedPromotePlatform = platform;
+        selectedAvatarForPromote = platform === 'heygen' ? avatarKey : null;
+        selectedPromoteDigitalHumanId = digitalHumanId;
+        promoteAudioBase64Yunwu = null;
+        const el = document.getElementById('promoteYunwuAudioWrap');
+        if (el) el.style.display = platform === 'yunwu' ? 'block' : 'none';
+        const inp = document.getElementById('promoteYunwuAudioInput');
+        if (inp) inp.value = '';
+        const useRow = document.getElementById('promoteUseVideoSoundRow');
+        if (useRow) useRow.style.display = (platform === 'yunwu' && hasVideoUrl) ? 'block' : 'none';
+        const statusEl = document.getElementById('promoteVideoSoundStatus');
+        if (statusEl) statusEl.style.display = 'none';
       }
-      
-      // 更新UI
       loadMyDigitalHumans(context);
-      
-      console.log('已选择用户创建的数字人:', { avatarId, context, digitalHumanId });
     }
     
+    function handleReciteYunwuAudio(e) {
+      const f = e.target?.files?.[0];
+      if (!f) { reciteAudioBase64Yunwu = null; return; }
+      const reader = new FileReader();
+      reader.onload = function() {
+        let s = String(reader.result || '');
+        if (s.indexOf('data:') === 0) { const i = s.indexOf(','); s = i >= 0 ? s.slice(i + 1) : ''; }
+        reciteAudioBase64Yunwu = s.replace(/[\s\n\r]/g, '');
+      };
+      reader.readAsDataURL(f);
+      var se = document.getElementById('reciteVideoSoundStatus');
+      if (se) se.style.display = 'none';
+    }
+    function handlePromoteYunwuAudio(e) {
+      const f = e.target?.files?.[0];
+      if (!f) { promoteAudioBase64Yunwu = null; return; }
+      const reader = new FileReader();
+      reader.onload = function() {
+        let s = String(reader.result || '');
+        if (s.indexOf('data:') === 0) { const i = s.indexOf(','); s = i >= 0 ? s.slice(i + 1) : ''; }
+        promoteAudioBase64Yunwu = s.replace(/[\s\n\r]/g, '');
+      };
+      reader.readAsDataURL(f);
+      var se = document.getElementById('promoteVideoSoundStatus');
+      if (se) se.style.display = 'none';
+    }
+
+    function arrayBufferToBase64(buffer) {
+      var bytes = new Uint8Array(buffer);
+      var binary = '';
+      for (var i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    }
+    function audioBufferToWav(buffer) {
+      var numCh = buffer.numberOfChannels;
+      var sampleRate = buffer.sampleRate;
+      var length = buffer.length * numCh * 2;
+      var header = new ArrayBuffer(44);
+      var v = new DataView(header);
+      function w(str, offset) { for (var i = 0; i < str.length; i++) v.setUint8(offset + i, str.charCodeAt(i)); }
+      w('RIFF', 0);
+      v.setUint32(4, 36 + length, true);
+      w('WAVE', 8);
+      w('fmt ', 12);
+      v.setUint32(16, 16, true);
+      v.setUint16(20, 1, true);
+      v.setUint16(22, numCh, true);
+      v.setUint32(24, sampleRate, true);
+      v.setUint32(28, sampleRate * numCh * 2, true);
+      v.setUint16(32, numCh * 2, true);
+      v.setUint16(34, 16, true);
+      w('data', 36);
+      v.setUint32(40, length, true);
+      var ch0 = buffer.getChannelData(0);
+      var ch1 = numCh > 1 ? buffer.getChannelData(1) : null;
+      var pcm = new Int16Array(buffer.length * numCh);
+      for (var i = 0; i < buffer.length; i++) {
+        pcm[i * numCh] = Math.max(-32768, Math.min(32767, ch0[i] * 32768)) | 0;
+        if (ch1) pcm[i * numCh + 1] = Math.max(-32768, Math.min(32767, ch1[i] * 32768)) | 0;
+      }
+      var out = new Uint8Array(44 + pcm.byteLength);
+      out.set(new Uint8Array(header), 0);
+      out.set(new Uint8Array(pcm.buffer), 44);
+      return out.buffer;
+    }
+    function extractAudioFromVideoUrl(videoUrl) {
+      return new Promise(function(resolve, reject) {
+        if (!videoUrl || !(typeof buildApiUrl === 'function')) {
+          reject(new Error('缺少视频地址或环境'));
+          return;
+        }
+        var proxyUrl = buildApiUrl('/api/proxy-media?url=' + encodeURIComponent(videoUrl));
+        var video = document.createElement('video');
+        video.crossOrigin = 'anonymous';
+        video.preload = 'auto';
+        video.muted = false;
+        video.playsInline = true;
+        video.src = proxyUrl;
+        var chunks = [];
+        var recorder;
+        video.onerror = function() { reject(new Error('视频加载失败，请检查地址或网络')); };
+        video.oncanplaythrough = function() {
+          var stream = (video.captureStream && video.captureStream()) || (video.mozCaptureStream && video.mozCaptureStream());
+          if (!stream) {
+            reject(new Error('当前浏览器不支持从视频截取音轨'));
+            return;
+          }
+          var mime = (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) ? 'audio/webm;codecs=opus' : 'audio/webm';
+          recorder = new MediaRecorder(stream, { mimeType: mime });
+          recorder.ondataavailable = function(ev) { if (ev.data && ev.data.size) chunks.push(ev.data); };
+          recorder.onstop = function() {
+            var blob = new Blob(chunks, { type: mime });
+            blob.arrayBuffer().then(function(buf) {
+              var ctx = new (window.AudioContext || window.webkitAudioContext)();
+              return ctx.decodeAudioData(buf.slice(0));
+            }).then(function(decoded) {
+              var wav = audioBufferToWav(decoded);
+              resolve(arrayBufferToBase64(wav));
+            }).catch(function(e) {
+              reject(e || new Error('解码音频失败'));
+            });
+          };
+          recorder.start(100);
+          video.play().catch(reject);
+        };
+        video.onended = function() {
+          if (recorder && recorder.state !== 'inactive') recorder.stop();
+        };
+        video.load();
+      });
+    }
+    function useReciteVideoSound() {
+      var list = JSON.parse(localStorage.getItem('digital_humans') || '[]');
+      var dh = list.find(function(d) { return d.id === selectedReciteDigitalHumanId; });
+      if (!dh || !dh.videoUrl) {
+        alert('当前数字人没有可用的原视频地址');
+        return;
+      }
+      var btn = document.getElementById('reciteUseVideoSoundBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ 正在从视频提取声音...'; }
+      extractAudioFromVideoUrl(dh.videoUrl).then(function(b64) {
+        reciteAudioBase64Yunwu = b64.replace(/[\s\n\r]/g, '');
+        var inp = document.getElementById('reciteYunwuAudioInput');
+        if (inp) inp.value = '';
+        var statusEl = document.getElementById('reciteVideoSoundStatus');
+        if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '✓ 已使用原视频中的声音'; }
+        if (btn) { btn.disabled = false; btn.textContent = '🎬 使用该数字人原视频中的声音'; }
+      }).catch(function(err) {
+        if (btn) { btn.disabled = false; btn.textContent = '🎬 使用该数字人原视频中的声音'; }
+        alert('提取失败：' + (err && err.message ? err.message : String(err)));
+      });
+    }
+    function usePromoteVideoSound() {
+      var list = JSON.parse(localStorage.getItem('digital_humans') || '[]');
+      var dh = list.find(function(d) { return d.id === selectedPromoteDigitalHumanId; });
+      if (!dh || !dh.videoUrl) {
+        alert('当前数字人没有可用的原视频地址');
+        return;
+      }
+      var btn = document.getElementById('promoteUseVideoSoundBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ 正在从视频提取声音...'; }
+      extractAudioFromVideoUrl(dh.videoUrl).then(function(b64) {
+        promoteAudioBase64Yunwu = b64.replace(/[\s\n\r]/g, '');
+        var inp = document.getElementById('promoteYunwuAudioInput');
+        if (inp) inp.value = '';
+        var statusEl = document.getElementById('promoteVideoSoundStatus');
+        if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '✓ 已使用原视频中的声音'; }
+        if (btn) { btn.disabled = false; btn.textContent = '🎬 使用该数字人原视频中的声音'; }
+      }).catch(function(err) {
+        if (btn) { btn.disabled = false; btn.textContent = '🎬 使用该数字人原视频中的声音'; }
+        alert('提取失败：' + (err && err.message ? err.message : String(err)));
+      });
+    }
+
+    // 大 base64 转临时 URL，供云雾接口传 URL 避免 431（云雾/可灵 image、sound_file 均支持 URL）
+    async function ensureYunwuAssetUrl(value, type) {
+      if (!value) return value;
+      var s = String(value).trim();
+      if (s.startsWith('http://') || s.startsWith('https://')) return s;
+      if (s.length <= 200000) return value;
+      try {
+        var r = await fetch(buildApiUrl('/api/upload-temp-asset'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: type === 'audio' ? 'audio' : 'image', content: s })
+        });
+        var j = await r.json().catch(function() { return {}; });
+        if (j && j.success && j.url) return j.url;
+      } catch (e) { console.warn('upload-temp-asset failed:', e); }
+      return value;
+    }
+
     // ========== 诵读文案功能 ==========
     
     // 更新诵读文案字数统计
@@ -5105,13 +5295,6 @@ async function retryTask(digitalHumanId) {
     // 创建诵读文案视频
     async function createReciteVideo() {
       const script = document.getElementById('reciteScript')?.value.trim();
-      const apiKey = getHeyGenApiKey();
-      
-      if (!apiKey) {
-        alert('请先配置 HeyGen API Key\n\n提示：请返回"创建数字人"页面，在步骤1中配置 API Key。');
-        return;
-      }
-      
       if (!script) {
         alert('请输入文案内容');
         return;
@@ -5122,18 +5305,84 @@ async function retryTask(digitalHumanId) {
         return;
       }
       
-      // 检查是否选择了数字人
-      if (!selectedAvatarForRecite) {
+      if (!selectedReciteDigitalHumanId && !selectedAvatarForRecite) {
         alert('请先选择一个数字人形象');
         return;
       }
-      
+      const isYunwu = selectedRecitePlatform === 'yunwu';
+      if (isYunwu) {
+        if (!reciteAudioBase64Yunwu) {
+          alert('使用云雾数字人时，请上传诵读音频或点击「使用该数字人原视频中的声音」（.mp3/.wav/.m4a/.aac，≤5MB）');
+          return;
+        }
+        const yunwuKey = (typeof getYunwuApiKey === 'function' ? getYunwuApiKey() : null) || '';
+        if (!yunwuKey) { alert('请先配置云雾 API Key'); return; }
+        const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
+        const dh = digitalHumans.find(d => d.id === selectedReciteDigitalHumanId);
+        if (!dh || !dh.thumbnail) { alert('未找到该数字人的形象图'); return; }
+        showLoading(true, '正在通过云雾生成诵读视频...');
+        try {
+          // 若缩略图过大则压缩；若仍超过约 150KB，则先上传为临时 URL 再传 URL，避免 431
+          var thumbLen = String(dh.thumbnail || '').length;
+          var imgToSend = (thumbLen > 400000 && typeof compressImageForStorage === 'function')
+            ? (await compressImageForStorage(dh.thumbnail, 640, 0.8))
+            : (dh.thumbnail || '');
+          var audioToSend = reciteAudioBase64Yunwu;
+          var urlThreshold = 200000;
+          if (String(imgToSend).length > urlThreshold) {
+            showLoading(true, '正在上传图片以减小请求体积...');
+            imgToSend = await ensureYunwuAssetUrl(imgToSend, 'image');
+            showLoading(true, '正在通过云雾生成诵读视频...');
+          }
+          if (String(audioToSend).length > urlThreshold) {
+            showLoading(true, '正在上传音频以减小请求体积...');
+            audioToSend = await ensureYunwuAssetUrl(audioToSend, 'audio');
+            showLoading(true, '正在通过云雾生成诵读视频...');
+          }
+          const resp = await fetch(buildApiUrl('/api/yunwu/recite-video'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey: yunwuKey, imageUrl: imgToSend, audioFile: audioToSend })
+          });
+          const res = await resp.json().catch(() => ({}));
+          if (!res.success || !res.taskId) {
+            showLoading(false);
+            alert('❌ 云雾诵读失败：' + (res.message || '未返回任务ID'));
+            return;
+          }
+          const workId = Date.now().toString();
+          const work = { id: workId, type: 'recite', title: script.substring(0, 50) + (script.length > 50 ? '...' : ''), script, platform: 'yunwu', taskId: res.taskId, status: 'processing', progress: 0, videoUrl: null, createDate: new Date().toISOString(), updateDate: new Date().toISOString() };
+          const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+          works.unshift(work);
+          if (works.length > 100) works.length = 100;
+          localStorage.setItem('cn_dh_works', JSON.stringify(works));
+          showLoading(false);
+          alert('✅ 云雾诵读视频已提交！请到「作品管理」查看进度。');
+          document.getElementById('reciteScript').value = '';
+          updateReciteCharCount();
+          reciteAudioBase64Yunwu = null;
+          const inp = document.getElementById('reciteYunwuAudioInput');
+          if (inp) inp.value = '';
+          var rs = document.getElementById('reciteVideoSoundStatus');
+          if (rs) rs.style.display = 'none';
+          startReciteTaskPolling(workId, res.taskId, yunwuKey, 'yunwu');
+          if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) loadWorks();
+        } catch (err) {
+          showLoading(false);
+          alert('❌ 创建失败：' + err.message);
+        }
+        return;
+      }
+
+      const apiKey = getHeyGenApiKey();
+      if (!apiKey) {
+        alert('请先配置 HeyGen API Key');
+        return;
+      }
       showLoading(true, '正在生成诵读视频...');
-      
       try {
         const voiceSelect = document.getElementById('reciteVoiceSelect');
         const voiceId = voiceSelect && voiceSelect.value ? voiceSelect.value : null;
-        
         const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -5193,15 +5442,13 @@ async function retryTask(digitalHumanId) {
         localStorage.setItem('cn_dh_works', JSON.stringify(works));
         
         showLoading(false);
-        alert('✅ 诵读视频任务已提交！\n\n任务正在后台处理中，您可以在"作品管理"中查看进度。');
-        
-        // 清空表单
+        alert('✅ 诵读视频任务已提交！\n\n任务正在后台处理中，请到「作品管理」查看进度与结果。');
         document.getElementById('reciteScript').value = '';
         updateReciteCharCount();
-        
-        // 开始轮询
         startReciteTaskPolling(workId, taskId, apiKey);
-        loadReciteHistory();
+        if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+          loadWorks();
+        }
         
       } catch (error) {
         console.error('创建诵读视频错误:', error);
@@ -5210,27 +5457,26 @@ async function retryTask(digitalHumanId) {
       }
     }
     
-    // 诵读任务轮询
-    function startReciteTaskPolling(workId, taskId, apiKey) {
+    function startReciteTaskPolling(workId, taskId, apiKey, platform) {
+      platform = platform || 'heygen';
       if (taskPollingIntervals.has(workId)) {
-        clearInterval(taskPollingIntervals.get(workId));
+        const ex = taskPollingIntervals.get(workId);
+        if (ex) clearInterval(ex);
+        taskPollingIntervals.delete(workId);
       }
-      
       let pollCount = 0;
       const maxPolls = 300;
-      
+      const taskUrl = () => buildApiUrl(`/api/digital-human/task/${platform}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`);
       const pollInterval = setInterval(async () => {
         pollCount++;
-        
         if (pollCount > maxPolls) {
           clearInterval(pollInterval);
           taskPollingIntervals.delete(workId);
           updateReciteWorkStatus(workId, 'failed', 0, null, '任务超时');
           return;
         }
-        
         try {
-          const response = await fetch(`/api/heygen/task/${taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+          const response = await fetch(taskUrl());
           const contentType = response.headers.get('content-type') || '';
           let result;
           
@@ -5280,14 +5526,13 @@ async function retryTask(digitalHumanId) {
         }
         
         localStorage.setItem('cn_dh_works', JSON.stringify(works));
-        
-        if (document.getElementById('recitePanel') && !document.getElementById('recitePanel').classList.contains('hidden')) {
-          loadReciteHistory();
+        if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+          loadWorks();
         }
       }
     }
     
-    // 加载诵读历史
+    // 加载诵读历史（已迁移至作品管理，此处保留空实现避免报错）
     function loadReciteHistory() {
       const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
       const reciteWorks = works.filter(w => w.type === 'recite');
@@ -5424,47 +5669,91 @@ async function retryTask(digitalHumanId) {
       }
     }
     
-    // 创建卖货推送视频
+    // 创建卖货推送视频（支持 HeyGen / 云雾）
     async function createPromoteVideo() {
       const productName = document.getElementById('promoteProductName')?.value.trim();
       const productDesc = document.getElementById('promoteProductDesc')?.value.trim();
-      const apiKey = getHeyGenApiKey();
-      
-      if (!apiKey) {
-        alert('请先配置 HeyGen API Key\n\n提示：请返回"创建数字人"页面，在步骤1中配置 API Key。');
-        return;
-      }
-      
-      if (!productName) {
-        alert('请输入商品名称');
-        return;
-      }
-      
-      if (!productDesc) {
-        alert('请输入商品描述');
-        return;
-      }
-      
-      if (productDesc.length > 500) {
-        alert('商品描述过长，请控制在500字以内');
-        return;
-      }
-      
-      // 检查是否选择了数字人
-      if (!selectedAvatarForPromote) {
+      if (!productName) { alert('请输入商品名称'); return; }
+      if (!productDesc) { alert('请输入商品描述'); return; }
+      if (productDesc.length > 500) { alert('商品描述过长，请控制在500字以内'); return; }
+      if (!selectedPromoteDigitalHumanId && !selectedAvatarForPromote) {
         alert('请先选择一个数字人形象');
         return;
       }
-      
+      const isYunwu = selectedPromotePlatform === 'yunwu';
+      if (isYunwu) {
+        if (!promoteAudioBase64Yunwu) {
+          alert('使用云雾数字人时，请上传推广音频或点击「使用该数字人原视频中的声音」（.mp3/.wav/.m4a/.aac，≤5MB）');
+          return;
+        }
+        const yunwuKey = (typeof getYunwuApiKey === 'function' ? getYunwuApiKey() : null) || '';
+        if (!yunwuKey) { alert('请先配置云雾 API Key'); return; }
+        const digitalHumans = JSON.parse(localStorage.getItem('digital_humans') || '[]');
+        const dh = digitalHumans.find(d => d.id === selectedPromoteDigitalHumanId);
+        if (!dh || !dh.thumbnail) { alert('未找到该数字人的形象图'); return; }
+        showLoading(true, '正在通过云雾生成推广视频...');
+        try {
+          var thumbLenP = String(dh.thumbnail || '').length;
+          var imgToSendP = (thumbLenP > 400000 && typeof compressImageForStorage === 'function')
+            ? (await compressImageForStorage(dh.thumbnail, 640, 0.8))
+            : (dh.thumbnail || '');
+          var audioToSendP = promoteAudioBase64Yunwu;
+          var urlThresholdP = 200000;
+          if (String(imgToSendP).length > urlThresholdP) {
+            showLoading(true, '正在上传图片以减小请求体积...');
+            imgToSendP = await ensureYunwuAssetUrl(imgToSendP, 'image');
+            showLoading(true, '正在通过云雾生成推广视频...');
+          }
+          if (String(audioToSendP).length > urlThresholdP) {
+            showLoading(true, '正在上传音频以减小请求体积...');
+            audioToSendP = await ensureYunwuAssetUrl(audioToSendP, 'audio');
+            showLoading(true, '正在通过云雾生成推广视频...');
+          }
+          const resp = await fetch(buildApiUrl('/api/yunwu/recite-video'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey: yunwuKey, imageUrl: imgToSendP, audioFile: audioToSendP })
+          });
+          const res = await resp.json().catch(() => ({}));
+          if (!res.success || !res.taskId) {
+            showLoading(false);
+            alert('❌ 云雾推广视频失败：' + (res.message || '未返回任务ID'));
+            return;
+          }
+          const script = `大家好，今天为大家推荐一款${productName}。${productDesc}。感兴趣的朋友不要错过！`;
+          const workId = Date.now().toString();
+          const work = { id: workId, type: 'product', productName, title: productName, script, platform: 'yunwu', taskId: res.taskId, status: 'processing', progress: 0, videoUrl: null, createDate: new Date().toISOString(), updateDate: new Date().toISOString() };
+          const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
+          works.unshift(work);
+          if (works.length > 100) works.length = 100;
+          localStorage.setItem('cn_dh_works', JSON.stringify(works));
+          showLoading(false);
+          alert('✅ 云雾推广视频已提交！请到「作品管理」查看进度。');
+          document.getElementById('promoteProductName').value = '';
+          document.getElementById('promoteProductDesc').value = '';
+          removeProductImage('promote');
+          updatePromoteCharCount();
+          promoteAudioBase64Yunwu = null;
+          const inp = document.getElementById('promoteYunwuAudioInput');
+          if (inp) inp.value = '';
+          var ps = document.getElementById('promoteVideoSoundStatus');
+          if (ps) ps.style.display = 'none';
+          startPromoteTaskPolling(workId, res.taskId, yunwuKey, 'yunwu');
+          if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) loadWorks();
+        } catch (err) {
+          showLoading(false);
+          alert('❌ 创建失败：' + err.message);
+        }
+        return;
+      }
+
+      const apiKey = getHeyGenApiKey();
+      if (!apiKey) { alert('请先配置 HeyGen API Key'); return; }
       showLoading(true, '正在生成推广视频...');
-      
       try {
         const voiceSelect = document.getElementById('promoteVoiceSelect');
         const voiceId = voiceSelect && voiceSelect.value ? voiceSelect.value : null;
-        
-        // 构建推广文案
         const script = `大家好，今天为大家推荐一款${productName}。${productDesc}。感兴趣的朋友不要错过！`;
-        
         const response = await fetch(buildApiUrl('/api/heygen/video'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -5529,46 +5818,42 @@ async function retryTask(digitalHumanId) {
         localStorage.setItem('cn_dh_works', JSON.stringify(works));
         
         showLoading(false);
-        alert('✅ 推广视频任务已提交！\n\n任务正在后台处理中，您可以在"作品管理"中查看进度。');
-        
-        // 清空表单
+        alert('✅ 推广视频任务已提交！\n\n任务正在后台处理中，请到「作品管理」查看进度与结果。');
         document.getElementById('promoteProductName').value = '';
         document.getElementById('promoteProductDesc').value = '';
         removeProductImage('promote');
         updatePromoteCharCount();
-        
-        // 开始轮询
-        startPromoteTaskPolling(workId, taskId, apiKey);
-        loadPromoteHistory();
-        
+        startPromoteTaskPolling(workId, taskId, apiKey, 'heygen');
+        if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+          loadWorks();
+        }
       } catch (error) {
         console.error('创建推广视频错误:', error);
         showLoading(false);
         alert('❌ 创建失败：' + error.message);
       }
     }
-    
-    // 推广任务轮询
-    function startPromoteTaskPolling(workId, taskId, apiKey) {
+
+    function startPromoteTaskPolling(workId, taskId, apiKey, platform) {
+      platform = platform || 'heygen';
       if (taskPollingIntervals.has(workId)) {
-        clearInterval(taskPollingIntervals.get(workId));
+        const ex = taskPollingIntervals.get(workId);
+        if (ex) clearInterval(ex);
+        taskPollingIntervals.delete(workId);
       }
-      
       let pollCount = 0;
       const maxPolls = 300;
-      
+      const taskUrl = () => buildApiUrl(`/api/digital-human/task/${platform}/${taskId}?apiKey=${encodeURIComponent(apiKey)}`);
       const pollInterval = setInterval(async () => {
         pollCount++;
-        
         if (pollCount > maxPolls) {
           clearInterval(pollInterval);
           taskPollingIntervals.delete(workId);
           updatePromoteWorkStatus(workId, 'failed', 0, null, '任务超时');
           return;
         }
-        
         try {
-          const response = await fetch(`/api/heygen/task/${taskId}?apiKey=${encodeURIComponent(apiKey)}`);
+          const response = await fetch(taskUrl());
           const contentType = response.headers.get('content-type') || '';
           let result;
           
@@ -5618,14 +5903,13 @@ async function retryTask(digitalHumanId) {
         }
         
         localStorage.setItem('cn_dh_works', JSON.stringify(works));
-        
-        if (document.getElementById('promotePanel') && !document.getElementById('promotePanel').classList.contains('hidden')) {
-          loadPromoteHistory();
+        if (document.getElementById('worksPanel') && !document.getElementById('worksPanel').classList.contains('hidden')) {
+          loadWorks();
         }
       }
     }
     
-    // 加载推广历史
+    // 加载推广历史（已迁移至作品管理，此处保留空实现避免报错）
     function loadPromoteHistory() {
       const works = JSON.parse(localStorage.getItem('cn_dh_works') || '[]');
       const promoteWorks = works.filter(w => w.type === 'product');

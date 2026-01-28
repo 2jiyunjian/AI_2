@@ -139,26 +139,34 @@
     if (!obj || typeof obj !== 'object') return;
     if (Array.isArray(obj)) {
       obj.forEach(function (x) {
-        if (typeof x === 'string' && /^https?:\/\//i.test(x)) out.push(x);
-        else if (x && typeof x === 'object' && x.url) out.push(x.url);
+        if (typeof x === 'string' && /^https?:\/\//i.test(x) && /\.(mp4|webm|mov|avi)$/i.test(x)) out.push(x);
+        else if (x && typeof x === 'object' && x.url && /\.(mp4|webm|mov|avi)$/i.test(x.url)) out.push(x.url);
       });
       return;
     }
-    var urlKeys = ['video', 'url', 'videos', 'video_url', 'output_video', 'result_url', 'output_url', 'videoUrl'];
+    var urlKeys = ['video', 'url', 'videos', 'video_url', 'output_video', 'result_url', 'output_url', 'videoUrl', 'video_file', 'output_file'];
     urlKeys.forEach(function (k) {
       var v = obj[k];
-      if (typeof v === 'string' && /^https?:\/\//i.test(v)) out.push(v);
+      if (typeof v === 'string' && /^https?:\/\//i.test(v) && /\.(mp4|webm|mov|avi)$/i.test(v)) out.push(v);
       else if (Array.isArray(v)) v.forEach(function (u) {
-        if (typeof u === 'string' && /^https?:\/\//i.test(u)) out.push(u);
-        else if (u && u.url) out.push(u.url);
+        if (typeof u === 'string' && /^https?:\/\//i.test(u) && /\.(mp4|webm|mov|avi)$/i.test(u)) out.push(u);
+        else if (u && u.url && /\.(mp4|webm|mov|avi)$/i.test(u.url)) out.push(u.url);
       });
     });
     Object.keys(obj).forEach(function (k) {
-      collectVideoUrls(obj[k], out);
+      if (k !== 'task_status' && k !== 'status' && k !== 'task_id' && k !== 'id') {
+        collectVideoUrls(obj[k], out);
+      }
     });
   }
 
-  function pollTask(taskId, apiKey, workId, setProgress, resolve, reject) {
+  function pollTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount) {
+    pollCount = pollCount || 0;
+    var maxPolls = 240;
+    if (pollCount > maxPolls) {
+      reject(new Error('任务超时（10分钟仍未完成），已判定失败'));
+      return;
+    }
     var url = apiOrigin() + '/api/yunwu/videos/image2video/' + encodeURIComponent(taskId);
     fetch(url, {
       method: 'GET',
@@ -185,11 +193,23 @@
         var videos = [];
         if (result.video || result.videoUrl || result.video_url) {
           var v = result.video || result.videoUrl || result.video_url;
-          if (typeof v === 'string') videos.push(v); else if (v && v.url) videos.push(v.url);
+          if (typeof v === 'string' && /\.(mp4|webm|mov|avi)$/i.test(v)) videos.push(v);
+          else if (v && v.url && /\.(mp4|webm|mov|avi)$/i.test(v.url)) videos.push(v.url);
+        }
+        if (result.videos && Array.isArray(result.videos)) {
+          result.videos.forEach(function (v) {
+            if (typeof v === 'string' && /\.(mp4|webm|mov|avi)$/i.test(v)) videos.push(v);
+            else if (v && v.url && /\.(mp4|webm|mov|avi)$/i.test(v.url)) videos.push(v.url);
+          });
         }
         if (!videos.length && result.url) {
           var url = typeof result.url === 'string' ? result.url : (result.url && result.url.url);
           if (url && /\.(mp4|webm|mov|avi)$/i.test(url)) videos.push(url);
+        }
+        if (!videos.length && data && data.data && data.data.video) {
+          var v = data.data.video;
+          if (typeof v === 'string' && /\.(mp4|webm|mov|avi)$/i.test(v)) videos.push(v);
+          else if (v && v.url && /\.(mp4|webm|mov|avi)$/i.test(v.url)) videos.push(v.url);
         }
         if (!videos.length) collectVideoUrls(data, videos);
         videos = [...new Set(videos.filter(Boolean))];
@@ -199,30 +219,32 @@
           (data && data.data && data.data.task_result && data.data.task_result.video_id) ||
           (data && data.video_id) ||
           '';
+        
+        var progressText = '轮询中，状态=' + (statusRaw || '处理中') + (videos.length > 0 ? '，已检测到视频链接' : '');
+        if (typeof setProgress === 'function') setProgress(progressText, statusRaw);
+        if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
+          var pw = (window.MediaStudio.getWorks() || []).find(function (w) { return w.id === workId; });
+          var n = ((pw && pw.progress) || 0) + 1;
+          window.MediaStudio.updateWork(workId, { progress: n, progressStatus: statusRaw || '处理中' });
+        }
+        
         if (status === 'done' && videos.length > 0) {
           resolve({ videos: videos, raw: data, videoId: videoId });
-          return;
-        }
-        if (status === 'done' && !videos.length) {
-          resolve({ videos: [], raw: data, videoId: videoId });
           return;
         }
         if (status === 'failed') {
           reject(new Error((result.message || result.error || data.message || data.error || '任务失败') + ''));
           return;
         }
-        if (status === 'processing') {
-          var progressText = '轮询中，状态=' + (statusRaw || '处理中');
-          if (typeof setProgress === 'function') setProgress(progressText, statusRaw);
-          if (workId && window.MediaStudio && window.MediaStudio.updateWork) {
-            var pw = (window.MediaStudio.getWorks() || []).find(function (w) { return w.id === workId; });
-            var n = ((pw && pw.progress) || 0) + 1;
-            window.MediaStudio.updateWork(workId, { progress: n, progressStatus: statusRaw || '处理中' });
-          }
-          setTimeout(function () { pollTask(taskId, apiKey, workId, setProgress, resolve, reject); }, 2500);
+        if (status === 'done' && !videos.length) {
+          setTimeout(function () { pollTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount + 1); }, 2500);
           return;
         }
-        setTimeout(function () { pollTask(taskId, apiKey, workId, setProgress, resolve, reject); }, 2500);
+        if (status === 'processing') {
+          setTimeout(function () { pollTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount + 1); }, 2500);
+          return;
+        }
+        setTimeout(function () { pollTask(taskId, apiKey, workId, setProgress, resolve, reject, pollCount + 1); }, 2500);
       })
       .catch(reject);
   }

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ai-2-7gjx
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        generateValue: true
+      
+      # 注意：如果您的Render服务URL不同，请修改上面的DEPLOY_URL值

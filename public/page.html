@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -43,13 +42,14 @@
     .sidebar {
       width: 256px;
       background: var(--sidebar-bg);
-      min-height: 100vh;
+      height: 100vh;
       position: fixed;
       left: 0;
       top: 0;
       display: flex;
       flex-direction: column;
       z-index: 100;
+      overflow: hidden;           /* 禁止整个侧边栏滚动 */
     }
 
     .sidebar-header {
@@ -58,6 +58,8 @@
       align-items: center;
       gap: 12px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;             /* 防止被压缩 */
+      background: var(--sidebar-bg);
     }
 
     .logo-icon {
@@ -92,6 +94,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-shrink: 0;             /* 防止被压缩 */
     }
 
     .user-avatar {
@@ -129,7 +132,24 @@
     .nav-menu {
       flex: 1;
       padding: 8px 0;
-      overflow-y: auto;
+      overflow-y: auto;           /* 中间菜单区域可滚动 */
+      overflow-x: hidden;
+      scrollbar-width: thin;      /* Firefox 细滚动条 */
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+      -ms-overflow-style: -ms-autohiding-scrollbar;   /* IE/Edge 自动隐藏滚动条 */
+    }
+    .nav-menu::-webkit-scrollbar {
+      width: 6px;                 /* Chrome/Safari/Opera 滚动条宽度 */
+    }
+    .nav-menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .nav-menu::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+    }
+    .nav-menu::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
     }
 
     .menu-item { position: relative; }
@@ -200,6 +220,8 @@
     .sidebar-footer {
       padding: 16px 24px;
       border-top: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;             /* 防止被压缩 */
+      background: var(--sidebar-bg);
     }
 
     .logout-btn {
@@ -426,6 +448,171 @@
       font-size: 0.95rem;
       cursor: pointer;
       font-family: inherit;
+    }
+
+    /* 钱包/在线充值页 */
+    .wallet-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .wallet-user-info {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    .wallet-balance-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .wallet-balance-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .wallet-balance-label {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+    }
+    .wallet-balance-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .wallet-section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+    .wallet-type-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .wallet-type-tab {
+      padding: 8px 20px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--card-bg);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+    .wallet-type-tab.active {
+      border-color: var(--primary);
+      background: rgba(24, 144, 255, 0.06);
+      color: var(--primary);
+    }
+    .wallet-amount-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) {
+      .wallet-amount-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .wallet-amount-card {
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .wallet-amount-card:hover {
+      border-color: var(--primary-light);
+    }
+    .wallet-amount-card.selected {
+      border-color: var(--primary);
+      background: rgba(24, 144, 255, 0.06);
+    }
+    .wallet-amount-value {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .wallet-summary {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 320px;
+    }
+    .wallet-summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .wallet-summary-row:last-child { margin-bottom: 0; }
+    .wallet-summary-label { color: var(--text-secondary); }
+    .wallet-summary-value { font-weight: 500; color: var(--text-primary); }
+    .wallet-submit-btn {
+      margin-top: 16px;
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .wallet-submit-btn:hover { background: var(--primary-dark); }
+    .wallet-records {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-color, #e5e7eb);
+    }
+    .wallet-records-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+    .wallet-records-table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-color, #e5e7eb);
+      background: var(--card-bg, #fff);
+    }
+    .wallet-records-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    .wallet-records-table th,
+    .wallet-records-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color, #e5e7eb);
+    }
+    .wallet-records-table th {
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--bg-secondary, #f9fafb);
+    }
+    .wallet-records-table tr:last-child td { border-bottom: none; }
+    .wallet-records-table tr:hover td { background: var(--bg-hover, #f3f4f6); }
+    .wallet-records-type.recharge { color: var(--success, #059669); font-weight: 500; }
+    .wallet-records-type.deduct { color: var(--danger, #dc2626); font-weight: 500; }
+    .wallet-records-empty {
+      padding: 24px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
     }
 
     /* AI模型选择样式 */
@@ -1790,293 +1977,6 @@
       to { opacity: 1; }
     }
 
-    /* ========== 智能体对话界面样式 ========== */
-    .chat-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 1001;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(6px);
-    }
-
-    .chat-modal-overlay.show {
-      display: flex;
-      animation: fadeIn 0.2s ease;
-    }
-
-    .chat-modal {
-      width: 100%;
-      max-width: 800px;
-      height: 85vh;
-      background: var(--card-bg);
-      border-radius: 20px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      animation: scaleIn 0.3s ease;
-      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
-    }
-
-    .chat-header {
-      padding: 16px 24px;
-      background: linear-gradient(135deg, var(--sidebar-bg), #002140);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      color: white;
-    }
-
-    .chat-agent-avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .chat-agent-info { flex: 1; }
-
-    .chat-agent-name {
-      font-size: 1.1rem;
-      font-weight: 600;
-      margin-bottom: 2px;
-    }
-
-    .chat-agent-status {
-      font-size: 0.8rem;
-      opacity: 0.8;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .chat-agent-status::before {
-      content: '';
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #52c41a;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .chat-close-btn {
-      width: 40px;
-      height: 40px;
-      border: none;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 1.2rem;
-      color: white;
-      transition: background 0.2s ease;
-    }
-
-    .chat-close-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    .chat-messages {
-      flex: 1;
-      padding: 24px;
-      overflow-y: auto;
-      background: linear-gradient(180deg, #f8fafc 0%, #f0f2f5 100%);
-    }
-
-    .chat-message {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-      animation: messageIn 0.3s ease;
-    }
-
-    @keyframes messageIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .chat-message.user {
-      flex-direction: row-reverse;
-    }
-
-    .chat-message-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      flex-shrink: 0;
-    }
-
-    .chat-message.assistant .chat-message-avatar {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
-      color: white;
-    }
-
-    .chat-message.user .chat-message-avatar {
-      background: linear-gradient(135deg, #52c41a, #73d13d);
-      color: white;
-    }
-
-    .chat-message-content {
-      max-width: 70%;
-      padding: 14px 18px;
-      border-radius: 16px;
-      font-size: 0.95rem;
-      line-height: 1.6;
-    }
-
-    .chat-message.assistant .chat-message-content {
-      background: white;
-      color: var(--text-primary);
-      border: 1px solid var(--border-color);
-      border-bottom-left-radius: 4px;
-    }
-
-    .chat-message.user .chat-message-content {
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      color: white;
-      border-bottom-right-radius: 4px;
-    }
-
-    .chat-message-time {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: 6px;
-      text-align: right;
-    }
-
-    .chat-message.user .chat-message-time {
-      text-align: left;
-    }
-
-    .chat-typing {
-      display: flex;
-      gap: 4px;
-      padding: 8px 0;
-    }
-
-    .chat-typing span {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--text-secondary);
-      animation: typing 1.4s infinite;
-    }
-
-    .chat-typing span:nth-child(2) { animation-delay: 0.2s; }
-    .chat-typing span:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes typing {
-      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-      30% { transform: translateY(-6px); opacity: 1; }
-    }
-
-    .chat-input-area {
-      padding: 16px 24px;
-      background: white;
-      border-top: 1px solid var(--border-color);
-    }
-
-    .chat-input-wrapper {
-      display: flex;
-      gap: 12px;
-      align-items: flex-end;
-    }
-
-    .chat-input-box {
-      flex: 1;
-      background: var(--content-bg);
-      border-radius: 16px;
-      padding: 4px;
-    }
-
-    .chat-input {
-      width: 100%;
-      padding: 12px 16px;
-      border: none;
-      background: transparent;
-      font-size: 0.95rem;
-      font-family: inherit;
-      resize: none;
-      min-height: 24px;
-      max-height: 120px;
-      line-height: 1.5;
-    }
-
-    .chat-input:focus {
-      outline: none;
-    }
-
-    .chat-input::placeholder {
-      color: var(--text-secondary);
-    }
-
-    .chat-send-btn {
-      width: 48px;
-      height: 48px;
-      border: none;
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      border-radius: 14px;
-      cursor: pointer;
-      font-size: 1.2rem;
-      color: white;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .chat-send-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
-    }
-
-    .chat-send-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .chat-suggestions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .chat-suggestion {
-      padding: 8px 16px;
-      background: var(--content-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .chat-suggestion:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-      background: rgba(24, 144, 255, 0.05);
-    }
-
     /* 创建智能体增强表单样式 */
     .form-section {
       margin-bottom: 24px;
@@ -2155,30 +2055,7 @@
       background: rgba(24, 144, 255, 0.1);
     }
 
-    .welcome-message {
-      text-align: center;
-      padding: 40px 20px;
-      color: var(--text-secondary);
-    }
 
-    .welcome-icon {
-      font-size: 4rem;
-      margin-bottom: 16px;
-    }
-
-    .welcome-title {
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 8px;
-    }
-
-    .welcome-desc {
-      font-size: 0.9rem;
-      margin-bottom: 24px;
-    }
-
-    /* ========== 数字人模块样式 ========== */
     .dh-create-container {
       background: var(--card-bg);
       border-radius: 16px;
@@ -3694,240 +3571,7 @@
       }
     }
 
-    /* ========== 录制模态框样式 ========== */
-    .record-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 1000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
-    }
-
-    .record-modal-overlay.show {
-      display: flex;
-      animation: fadeIn 0.2s ease;
-    }
-
-    .record-modal {
-      width: 100%;
-      max-width: 640px;
-      background: var(--card-bg);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
-
-    .record-modal-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .record-modal-title {
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .record-modal-body {
-      padding: 24px;
-    }
-
-    .record-mode-tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-
-    .record-mode-tab {
-      flex: 1;
-      padding: 12px 16px;
-      border: 2px solid var(--border-color);
-      border-radius: 8px;
-      background: var(--card-bg);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-size: 0.9rem;
-      font-family: inherit;
-      color: var(--text-primary);
-    }
-
-    .record-mode-tab:hover {
-      border-color: var(--primary);
-    }
-
-    .record-mode-tab.active {
-      border-color: var(--primary);
-      background: rgba(24, 144, 255, 0.1);
-      color: var(--primary);
-    }
-
-    .record-preview-container {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 16/9;
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-
-    .record-preview-container video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .record-preview-placeholder {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #666;
-      gap: 12px;
-    }
-
-    .record-preview-icon {
-      font-size: 4rem;
-    }
-
-    .record-timer {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      background: rgba(255, 0, 0, 0.8);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .record-dot {
-      width: 10px;
-      height: 10px;
-      background: white;
-      border-radius: 50%;
-      animation: blink 1s infinite;
-    }
-
-    @keyframes blink {
-      0%, 50% { opacity: 1; }
-      51%, 100% { opacity: 0.3; }
-    }
-
-    .audio-visualizer {
-      background: #1a1a2e;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .audio-visualizer canvas {
-      width: 100%;
-      height: 100px;
-    }
-
-    .record-controls {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .record-ctrl-btn {
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      border: 1px solid var(--border-color);
-      background: var(--card-bg);
-      color: var(--text-primary);
-      font-family: inherit;
-    }
-
-    .record-ctrl-btn:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-
-    .record-ctrl-btn.primary {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
-
-    .record-ctrl-btn.primary:hover {
-      background: var(--primary-dark);
-    }
-
-    .record-ctrl-btn.danger {
-      background: var(--danger);
-      color: white;
-      border-color: var(--danger);
-    }
-
-    .record-ctrl-btn.danger:hover {
-      background: #ff1a1a;
-    }
-
-    .record-ctrl-btn.recording {
-      animation: pulse-red 1s infinite;
-    }
-
-    @keyframes pulse-red {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4); }
-      50% { box-shadow: 0 0 0 10px rgba(255, 77, 79, 0); }
-    }
-
-    .record-result {
-      background: rgba(82, 196, 26, 0.1);
-      border: 1px solid rgba(82, 196, 26, 0.3);
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      margin-top: 20px;
-    }
-
-    .record-result-title {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--success);
-      margin-bottom: 8px;
-    }
-
-    .record-result-info {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      margin-bottom: 16px;
-    }
-
-    .record-result-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-    }
+    */
   </style>
 </head>
 <body>
@@ -3936,16 +3580,7 @@
     <div class="sidebar-header">
       <div class="logo-icon">🤖</div>
       <div class="logo-text">
-        智能体管理平台
-        <span>用户前台</span>
-      </div>
-    </div>
-
-    <div class="user-info">
-      <div class="user-avatar" id="userAvatar">U</div>
-      <div class="user-details">
-        <div class="user-name" id="userName">用户</div>
-        <div class="role-badge">普通用户</div>
+        智能管理平台
       </div>
     </div>
 
@@ -4038,87 +3673,6 @@
     </div>
   </div>
 
-  <!-- 录制模态框 -->
-  <div class="record-modal-overlay" id="recordModalOverlay" onclick="closeRecordModal(event)">
-    <div class="record-modal" onclick="event.stopPropagation()">
-      <div class="record-modal-header">
-        <div class="record-modal-title">📹 录制素材</div>
-        <button class="settings-close-btn" onclick="closeRecordModal()">✕</button>
-      </div>
-      
-      <div class="record-modal-body">
-        <!-- 录制模式选择 -->
-        <div class="record-mode-tabs">
-          <button class="record-mode-tab active" data-mode="video" onclick="switchRecordMode('video')">
-            🎬 录制视频
-          </button>
-          <button class="record-mode-tab" data-mode="photo" onclick="switchRecordMode('photo')">
-            📷 拍摄照片
-          </button>
-          <button class="record-mode-tab" data-mode="audio" onclick="switchRecordMode('audio')">
-            🎤 录制音频
-          </button>
-        </div>
-        
-        <!-- 预览区域 -->
-        <div class="record-preview-container">
-          <video id="recordPreview" autoplay muted playsinline></video>
-          <canvas id="recordCanvas" style="display: none;"></canvas>
-          <div class="record-preview-placeholder" id="previewPlaceholder">
-            <div class="record-preview-icon">📹</div>
-            <div>点击下方按钮开启摄像头</div>
-          </div>
-          
-          <!-- 录制时间显示 -->
-          <div class="record-timer" id="recordTimer" style="display: none;">
-            <span class="record-dot"></span>
-            <span id="recordTime">00:00</span>
-          </div>
-          
-          <!-- 拍摄的照片预览 -->
-          <img id="capturedPhoto" style="display: none; max-width: 100%; border-radius: 8px;">
-        </div>
-        
-        <!-- 音频波形显示（仅音频模式） -->
-        <div class="audio-visualizer" id="audioVisualizer" style="display: none;">
-          <canvas id="audioCanvas" width="400" height="100"></canvas>
-        </div>
-        
-        <!-- 录制控制按钮 -->
-        <div class="record-controls">
-          <button class="record-ctrl-btn" id="btnStartCamera" onclick="startCamera()">
-            📷 开启摄像头
-          </button>
-          <button class="record-ctrl-btn" id="btnStartMic" onclick="startMicrophone()" style="display: none;">
-            🎤 开启麦克风
-          </button>
-          <button class="record-ctrl-btn danger" id="btnStopCamera" onclick="stopCamera()" style="display: none;">
-            ⏹️ 关闭设备
-          </button>
-          <button class="record-ctrl-btn primary" id="btnStartRecord" onclick="startRecording()" style="display: none;">
-            ⏺️ 开始录制
-          </button>
-          <button class="record-ctrl-btn danger recording" id="btnStopRecord" onclick="stopRecording()" style="display: none;">
-            ⏹️ 停止录制
-          </button>
-          <button class="record-ctrl-btn primary" id="btnCapturePhoto" onclick="capturePhoto()" style="display: none;">
-            📷 拍摄照片
-          </button>
-        </div>
-        
-        <!-- 录制结果 -->
-        <div class="record-result" id="recordResult" style="display: none;">
-          <div class="record-result-title">✅ 录制完成</div>
-          <div class="record-result-info" id="recordResultInfo"></div>
-          <div class="record-result-actions">
-            <button class="record-ctrl-btn" onclick="retakeRecording()">🔄 重新录制</button>
-            <button class="record-ctrl-btn primary" onclick="useRecording()">✓ 使用此素材</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- 消息通知弹窗 -->
   <div class="notification-modal-overlay" id="notificationModalOverlay" onclick="closeNotificationModal(event)">
     <div class="notification-modal" onclick="event.stopPropagation()">
@@ -4170,10 +3724,11 @@
               <!-- 模型选项将动态生成 -->
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group" id="agentApiKeyFormGroup">
             <label class="form-label">API Key *</label>
             <input type="password" class="form-input" id="agentApiKey" placeholder="请输入所选平台的API密钥">
             <div class="form-hint" id="apiKeyHint">🔑 请输入对应平台的API Key，<a href="#" id="apiKeyLink" target="_blank" style="color: var(--primary);">点击获取</a></div>
+            <div class="form-hint" id="agentApiKeyAdminHint" style="display: none;">API Key 由管理员在后台分配，无需填写。请先登录后使用。</div>
           </div>
           <div class="form-group">
             <label class="form-label">智能体描述</label>
@@ -4223,38 +3778,6 @@
       <div class="create-agent-footer">
         <button class="settings-btn secondary" onclick="closeCreateAgentModal()">取消</button>
         <button class="settings-btn primary" onclick="saveCreatedAgent()">🚀 创建智能体</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 智能体对话界面 -->
-  <div class="chat-modal-overlay" id="chatModalOverlay" onclick="closeChatModal(event)">
-    <div class="chat-modal" onclick="event.stopPropagation()">
-      <div class="chat-header">
-        <div class="chat-agent-avatar" id="chatAgentAvatar">🤖</div>
-        <div class="chat-agent-info">
-          <div class="chat-agent-name" id="chatAgentName">AI 助手</div>
-          <div class="chat-agent-status">
-            <span id="chatAgentPlatform">GPT-4</span> · 在线
-          </div>
-        </div>
-        <button class="chat-close-btn" onclick="closeChatModal()">✕</button>
-      </div>
-      <div class="chat-messages" id="chatMessages">
-        <!-- 消息列表将动态生成 -->
-      </div>
-      <div class="chat-input-area">
-        <div class="chat-input-wrapper">
-          <div class="chat-input-box">
-            <textarea class="chat-input" id="chatInput" placeholder="输入消息..." rows="1" onkeydown="handleChatKeydown(event)"></textarea>
-          </div>
-          <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()">
-            ➤
-          </button>
-        </div>
-        <div class="chat-suggestions" id="chatSuggestions">
-          <!-- 建议将动态生成 -->
-        </div>
       </div>
     </div>
   </div>
@@ -4720,51 +4243,12 @@
       'custom-category': { title: '自定义类目', icon: '🏷️', iconColor: 'green', parent: '我的作品表', desc: '创建自定义分类目录' },
       'my-works': { title: '我的作品', icon: '🎨', iconColor: 'purple', parent: '我的作品表', desc: '管理所有创作的作品' },
       'vip-purchase': { title: '会员购买', icon: '👑', iconColor: 'orange', parent: '个人中心', desc: '升级会员享受更多权益' },
+      'wallet': { title: '在线充值', icon: '💰', iconColor: 'orange', parent: '钱包', desc: '快速方便的充值方式', type: 'wallet' },
       'token-recharge': { title: '算力豆充值', icon: '🪙', iconColor: 'orange', parent: '个人中心', desc: '充值算力豆获取更多使用次数' },
       'my-orders': { title: '我的订单', icon: '📋', iconColor: 'blue', parent: '个人中心', desc: '查看所有订单记录' },
       'my-income': { title: '我的收入', icon: '💰', iconColor: 'green', parent: '个人中心', desc: '查看收益和提现' },
       
-      // 数字人模块
-      'digital-human-create': {
-        title: '创建数字人',
-        icon: '👤',
-        iconColor: 'blue',
-        parent: '数字人',
-        desc: '上传素材，结合AI智能体，生成专属数字人',
-        type: 'digital-human-create'
-      },
-      'digital-human-list': {
-        title: '我的数字人',
-        icon: '👥',
-        iconColor: 'purple',
-        parent: '数字人',
-        desc: '管理您创建的所有数字人形象',
-        type: 'digital-human-list'
-      },
-      'digital-human-product': {
-        title: '商品讲解',
-        icon: '🛒',
-        iconColor: 'orange',
-        parent: '数字人',
-        desc: '让数字人拿着商品进行专业讲解和推广',
-        type: 'digital-human-product'
-      },
-      'digital-human-script': {
-        title: '文案朗读',
-        icon: '📖',
-        iconColor: 'green',
-        parent: '数字人',
-        desc: '让数字人朗读您的文案，生成视频',
-        type: 'digital-human-script'
-      },
-      'digital-human-video': {
-        title: '生成视频',
-        icon: '🎬',
-        iconColor: 'red',
-        parent: '数字人',
-        desc: '查看和管理已生成的数字人视频',
-        type: 'digital-human-video'
-      }
+      // 数字人模块：以 `public/digital-human/` 独立页面为主（此处不再重复实现）
     };
 
     // 菜单配置
@@ -4790,14 +4274,17 @@
       },
       {
         icon: '🎨', text: 'AI创作工坊', tag: { text: 'NEW', color: 'orange' },
-        directLink: 'media-studio.html'
+        directLink: 'ai-studio/index.html'
       },
       {
         icon: '👤', text: '数字人', tag: { text: 'NEW', color: 'red' },
         children: [
-          { text: '🇨🇳 国内数字人', page: 'digital-human-cn', tag: { text: '国产', color: 'red' }, isExternal: true, url: 'digital-human-cn.html' },
-          { text: '🌍 国际数字人', page: 'digital-human-intl', tag: { text: 'Global', color: 'purple' }, isExternal: true, url: 'digital-human-intl.html' }
+          { text: '🇨🇳 国内数字人', page: 'digital-human-cn', tag: { text: '国产', color: 'red' }, isExternal: true, url: 'digital-human/cn.html' },
+          { text: '🌍 国际数字人', page: 'digital-human-intl', tag: { text: 'Global', color: 'purple' }, isExternal: true, url: 'digital-human/intl.html' }
         ]
+      },
+      {
+        icon: '💰', text: '钱包', directLink: 'page.html?page=wallet'
       },
       {
         icon: '⚡', text: '工作流市场',
@@ -4942,32 +4429,11 @@
         return;
       }
       
-      // 数字人模块页面
-      if (config.type === 'digital-human-create') {
-        renderDigitalHumanCreate(config);
+      if (config.type === 'wallet') {
+        renderWalletPage(config);
         return;
       }
       
-      if (config.type === 'digital-human-list') {
-        renderDigitalHumanList(config);
-        return;
-      }
-      
-      if (config.type === 'digital-human-product') {
-        renderDigitalHumanProduct(config);
-        return;
-      }
-      
-      if (config.type === 'digital-human-script') {
-        renderDigitalHumanScript(config);
-        return;
-      }
-      
-      if (config.type === 'digital-human-video') {
-        renderDigitalHumanVideo(config);
-        return;
-      }
-
       // 渲染普通功能页面
       let featuresHtml = '';
       if (config.features && config.features.length > 0) {
@@ -5006,6 +4472,140 @@
         </div>
         ${featuresHtml}
       `;
+    }
+
+    // 钱包/在线充值页（无折扣）- 余额从 /api/wallet 获取
+    const WALLET_AMOUNTS = [100, 500, 1000, 2000, 3000, 5000, 10000, 20000, 50000, 100000, 300000, 500000, 800000, 1000000];
+    async function renderWalletPage(config) {
+      document.getElementById('breadcrumb').innerHTML = `
+        <span>🏠</span><span>/</span><span>钱包</span><span>/</span><span class="breadcrumb-item">在线充值</span>
+      `;
+      document.title = '在线充值 - 智能体管理平台';
+      const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+      const email = user.email || user.username ? user.username + '@user' : '';
+      let balance = 0;
+      let consumed = 0;
+      const token = sessionStorage.getItem('token') || '';
+      let records = [];
+      if (token) {
+        try {
+          const [walletRes, recordsRes] = await Promise.all([
+            fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/wallet/records?limit=50', { headers: { 'Authorization': 'Bearer ' + token } })
+          ]);
+          const data = walletRes.ok ? await walletRes.json() : {};
+          if (data.success && data.balance != null) balance = Number(data.balance) || 0;
+          if (data.success && data.consumed != null) consumed = Number(data.consumed) || 0;
+          const recData = recordsRes.ok ? await recordsRes.json() : {};
+          if (recData.success && Array.isArray(recData.records)) records = recData.records;
+        } catch (e) {
+          console.warn('获取钱包或记录失败:', e);
+        }
+      }
+      const formatRecordTime = (s) => {
+        if (!s) return '-';
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? s : d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      };
+      const recordsRowsHtml = records.length === 0
+        ? '<tr><td colspan="5" class="wallet-records-empty">暂无充值与扣款记录</td></tr>'
+        : records.map(rec => `
+          <tr>
+            <td>${formatRecordTime(rec.created_at)}</td>
+            <td><span class="wallet-records-type ${rec.type}">${rec.type === 'recharge' ? '充值' : '扣款'}</span></td>
+            <td>${rec.type === 'recharge' ? '+' : '-'}⚡ ${Math.abs(rec.amount).toFixed(2)}</td>
+            <td>${rec.balance_after != null ? '⚡ ' + rec.balance_after.toFixed(2) : '-'}</td>
+            <td>${(rec.description || '-').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
+          </tr>
+        `).join('');
+      const amountCardsHtml = WALLET_AMOUNTS.map((amt, i) => `
+        <div class="wallet-amount-card" data-amount="${amt}" onclick="selectWalletAmount(${amt})" title="⚡ ${amt.toLocaleString()}">
+          <div class="wallet-amount-value">⚡ ${amt.toLocaleString()}</div>
+        </div>
+      `).join('');
+      document.getElementById('contentArea').innerHTML = `
+        <div class="page-header">
+          <div class="wallet-header-row">
+            <div>
+              <div class="page-title">
+                <div class="page-title-icon ${config.iconColor}">${config.icon}</div>
+                在线充值
+              </div>
+              <div class="page-desc">快速方便的充值方式</div>
+            </div>
+            <div class="wallet-user-info">${email ? email + ' (普通用户)' : ''}</div>
+          </div>
+        </div>
+        <div class="wallet-balance-grid">
+          <div class="wallet-balance-card">
+            <div class="wallet-balance-label">当前余额 (Current Balance)</div>
+            <div class="wallet-balance-value">⚡ ${balance.toFixed(2)}</div>
+          </div>
+          <div class="wallet-balance-card">
+            <div class="wallet-balance-label">历史消耗 (Historical Consumption)</div>
+            <div class="wallet-balance-value">⚡ ${consumed.toFixed(2)}</div>
+          </div>
+        </div>
+        <div class="wallet-section-title">充值类型 (Recharge Type)</div>
+        <div class="wallet-type-tabs">
+          <button type="button" class="wallet-type-tab active" data-type="fixed">固定金额 (Fixed Amount)</button>
+          <button type="button" class="wallet-type-tab" data-type="custom">自定义金额 (Custom Amount)</button>
+        </div>
+        <div class="wallet-section-title">选择充值金额 (Select Recharge Amount)</div>
+        <div class="wallet-amount-grid" id="walletAmountGrid">${amountCardsHtml}</div>
+        <div class="wallet-summary" id="walletSummary">
+          <div class="wallet-summary-row">
+            <span class="wallet-summary-label">充值数量 (Recharge Quantity)</span>
+            <span class="wallet-summary-value" id="walletSummaryQty">⚡ 100.00</span>
+          </div>
+          <div class="wallet-summary-row">
+            <span class="wallet-summary-label">实付金额 (Actual Payment)</span>
+            <span class="wallet-summary-value" id="walletSummaryPay">100.00 元</span>
+          </div>
+          <a href="/recharge.html">
+            <button type="button" class="wallet-submit-btn">确认充值</button>
+          </a>
+          
+        </div>
+        <div class="wallet-records">
+          <div class="wallet-records-title">充值与扣款记录</div>
+          <div class="wallet-records-table-wrap">
+            <table class="wallet-records-table">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>类型</th>
+                  <th>金额</th>
+                  <th>变动后余额</th>
+                  <th>说明</th>
+                </tr>
+              </thead>
+              <tbody>${recordsRowsHtml}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      selectWalletAmount(100);
+      document.querySelectorAll('.wallet-type-tab').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.wallet-type-tab').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+        });
+      });
+    }
+    function selectWalletAmount(amount) {
+      document.querySelectorAll('.wallet-amount-card').forEach(el => {
+        el.classList.toggle('selected', parseInt(el.dataset.amount, 10) === amount);
+      });
+      const qtyEl = document.getElementById('walletSummaryQty');
+      const payEl = document.getElementById('walletSummaryPay');
+      if (qtyEl) qtyEl.textContent = '⚡ ' + amount.toFixed(2);
+      if (payEl) payEl.textContent = amount.toFixed(2) + ' 元';
+      window._walletSelectedAmount = amount;
+    }
+    function submitWalletRecharge() {
+      const amount = window._walletSelectedAmount || 100;
+      alert('充值功能需对接支付接口。当前选择：⚡ ' + amount.toLocaleString());
     }
 
     // 渲染AI模型选择页面
@@ -5530,8 +5130,9 @@
       // 填充表单
       document.getElementById('agentName').value = agent.name || '';
       document.getElementById('agentDesc').value = agent.desc || '';
-      document.getElementById('agentApiKey').value = ''; // 不显示已保存的API Key，用户可以输入新的
-      document.getElementById('agentApiKey').placeholder = agent.apiKey ? '已配置 (留空保持不变)' : '请输入API密钥';
+      const isDh = platformId === 'heygen' || platformId === 'yunwu';
+      document.getElementById('agentApiKey').value = '';
+      document.getElementById('agentApiKey').placeholder = isDh ? '' : (agent.apiKey ? '已配置 (留空保持不变)' : '请输入API密钥');
       document.getElementById('agentSystemPrompt').value = agent.systemPrompt || '';
       document.getElementById('agentGreeting').value = agent.greeting || '';
       document.getElementById('agentTemperature').value = agent.temperature || 0.7;
@@ -5539,8 +5140,7 @@
       document.getElementById('agentMaxTokens').value = agent.maxTokens || '2048';
       document.getElementById('agentFeatures').value = (agent.features || []).join(', ');
       
-      // 更新API Key链接
-      selectCreateModel(platformId);
+      selectCreateModel(platformId); // 会根据平台显示/隐藏 API Key 输入（数字人由管理员分配）
     }
 
     // 删除创建的智能体
@@ -5630,7 +5230,24 @@
         item.classList.toggle('selected', item.dataset.model === modelId);
       });
       
-      // 更新API Key获取链接
+      // 数字人平台（heygen/yunwu）由管理员分配 API Key，不展示输入框
+      const isDigitalHuman = modelId === 'heygen' || modelId === 'yunwu';
+      const apiKeyGroup = document.getElementById('agentApiKeyFormGroup');
+      const apiKeyInput = document.getElementById('agentApiKey');
+      const apiKeyHint = document.getElementById('apiKeyHint');
+      const adminHint = document.getElementById('agentApiKeyAdminHint');
+      if (apiKeyGroup && apiKeyHint && adminHint) {
+        if (isDigitalHuman) {
+          apiKeyHint.style.display = 'none';
+          adminHint.style.display = 'block';
+          if (apiKeyInput) apiKeyInput.style.display = 'none';
+        } else {
+          apiKeyHint.style.display = 'block';
+          adminHint.style.display = 'none';
+          if (apiKeyInput) apiKeyInput.style.display = '';
+        }
+      }
+      
       const apiKeyLinks = {
         'openai': 'https://platform.openai.com/api-keys',
         'claude': 'https://console.anthropic.com/',
@@ -5644,10 +5261,9 @@
       };
       
       const linkEl = document.getElementById('apiKeyLink');
-      const hintEl = document.getElementById('apiKeyHint');
       const model = modelOptions.find(m => m.id === modelId);
       
-      if (linkEl && apiKeyLinks[modelId]) {
+      if (linkEl && apiKeyLinks[modelId] && !isDigitalHuman) {
         linkEl.href = apiKeyLinks[modelId];
         linkEl.textContent = `前往${model?.name || '平台'}获取`;
       }
@@ -5680,7 +5296,8 @@
         return;
       }
       
-      if (!apiKey && !editingAgentId) {
+      const isDigitalHuman = selectedModelId === 'heygen' || selectedModelId === 'yunwu';
+      if (!isDigitalHuman && !apiKey && !editingAgentId) {
         alert('请输入API Key！\n\n没有API Key将无法与智能体对话。');
         return;
       }
@@ -5704,19 +5321,20 @@
         type: 'created'
       };
       
-      // 只有当输入了新的API Key时才更新
-      if (apiKey) {
+      // 非数字人平台才保存用户输入的 API Key；数字人（heygen/yunwu）由服务器按登录用户分配，不存前端
+      if (!isDigitalHuman && apiKey) {
         agentData.apiKey = apiKey;
+      }
+      if (isDigitalHuman) {
+        delete agentData.apiKey;
       }
       
       let createdAgents = getCreatedAgents();
       
       if (editingAgentId) {
-        // 编辑模式
         const index = createdAgents.findIndex(a => a.id === editingAgentId);
         if (index !== -1) {
-          // 保留原有的API Key如果没有输入新的
-          if (!apiKey && createdAgents[index].apiKey) {
+          if (!isDigitalHuman && !apiKey && createdAgents[index].apiKey) {
             agentData.apiKey = createdAgents[index].apiKey;
           }
           createdAgents[index] = { ...createdAgents[index], ...agentData };
@@ -5741,280 +5359,6 @@
       // 如果当前在我创建的智能体页面，刷新
       if (getCurrentPage() === 'my-created-agent') {
         renderMyCreatedAgents(pageConfig['my-created-agent']);
-      }
-    }
-
-    // ========== 智能体对话功能 ==========
-    let currentChatAgent = null;
-    let chatMessages = [];
-    let isAiResponding = false;
-
-    function openChatModal(agent) {
-      currentChatAgent = agent;
-      chatMessages = agent.chatHistory || [];
-      
-      // 更新聊天界面信息
-      document.getElementById('chatAgentAvatar').textContent = agent.customIcon || agent.logo;
-      document.getElementById('chatAgentName').textContent = agent.name;
-      document.getElementById('chatAgentPlatform').textContent = agent.platform;
-      
-      // 显示弹窗
-      document.getElementById('chatModalOverlay').classList.add('show');
-      
-      // 渲染消息
-      renderChatMessages();
-      
-      // 渲染建议
-      renderChatSuggestions();
-      
-      // 聚焦输入框
-      setTimeout(() => {
-        document.getElementById('chatInput').focus();
-      }, 100);
-    }
-
-    function closeChatModal(event) {
-      if (!event || event.target === document.getElementById('chatModalOverlay')) {
-        document.getElementById('chatModalOverlay').classList.remove('show');
-        
-        // 保存聊天历史
-        if (currentChatAgent) {
-          saveChatHistory();
-        }
-        currentChatAgent = null;
-      }
-    }
-
-    function renderChatMessages() {
-      const container = document.getElementById('chatMessages');
-      
-      if (chatMessages.length === 0) {
-        // 显示欢迎消息
-        const greeting = currentChatAgent.greeting || `你好！我是${currentChatAgent.name}，有什么可以帮助你的吗？`;
-        container.innerHTML = `
-          <div class="welcome-message">
-            <div class="welcome-icon">${currentChatAgent.customIcon || currentChatAgent.logo}</div>
-            <div class="welcome-title">与 ${currentChatAgent.name} 开始对话</div>
-            <div class="welcome-desc">${currentChatAgent.desc || ''}</div>
-          </div>
-          <div class="chat-message assistant">
-            <div class="chat-message-avatar">${currentChatAgent.customIcon || currentChatAgent.logo}</div>
-            <div>
-              <div class="chat-message-content">${greeting}</div>
-              <div class="chat-message-time">${formatTime(new Date())}</div>
-            </div>
-          </div>
-        `;
-        return;
-      }
-      
-      container.innerHTML = chatMessages.map(msg => `
-        <div class="chat-message ${msg.role}">
-          <div class="chat-message-avatar">
-            ${msg.role === 'assistant' ? (currentChatAgent.customIcon || currentChatAgent.logo) : '👤'}
-          </div>
-          <div>
-            <div class="chat-message-content">${formatMessageContent(msg.content)}</div>
-            <div class="chat-message-time">${formatTime(msg.timestamp)}</div>
-          </div>
-        </div>
-      `).join('');
-      
-      // 滚动到底部
-      container.scrollTop = container.scrollHeight;
-    }
-
-    function renderChatSuggestions() {
-      const container = document.getElementById('chatSuggestions');
-      const suggestions = [
-        '介绍一下你自己',
-        '你能帮我做什么？',
-        '写一段代码示例',
-        '解释一个概念'
-      ];
-      
-      container.innerHTML = suggestions.map(s => `
-        <div class="chat-suggestion" onclick="useSuggestion('${s}')">${s}</div>
-      `).join('');
-    }
-
-    function useSuggestion(text) {
-      document.getElementById('chatInput').value = text;
-      document.getElementById('chatInput').focus();
-    }
-
-    function formatMessageContent(content) {
-      // 简单的Markdown支持
-      return content
-        .replace(/\n/g, '<br>')
-        .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    }
-
-    function formatTime(timestamp) {
-      const date = timestamp ? new Date(timestamp) : new Date();
-      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    }
-
-    function handleChatKeydown(event) {
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        sendChatMessage();
-      }
-    }
-
-    async function sendChatMessage() {
-      const input = document.getElementById('chatInput');
-      const message = input.value.trim();
-      
-      if (!message || isAiResponding) return;
-      
-      // 检查API Key
-      const apiKey = getApiKey(currentChatAgent.platformId);
-      if (!apiKey) {
-        alert(`请先在设置中配置 ${currentChatAgent.platform} 的 API Key`);
-        openSettingsModal();
-        setTimeout(() => {
-          const tab = document.querySelector('[onclick="switchSettingsTab(this, \'api\')"]');
-          if (tab) tab.click();
-        }, 100);
-        return;
-      }
-      
-      // 添加用户消息
-      const userMessage = {
-        role: 'user',
-        content: message,
-        timestamp: new Date().toISOString()
-      };
-      chatMessages.push(userMessage);
-      
-      // 清空输入框
-      input.value = '';
-      
-      // 隐藏建议
-      document.getElementById('chatSuggestions').style.display = 'none';
-      
-      // 渲染消息
-      renderChatMessages();
-      
-      // 添加加载状态
-      isAiResponding = true;
-      document.getElementById('chatSendBtn').disabled = true;
-      addTypingIndicator();
-      
-      try {
-        // 调用AI接口
-        const response = await fetch(buildApiUrl('/api/ai/chat'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            platform: currentChatAgent.platformId,
-            apiKey: apiKey,
-            model: null, // 使用默认模型
-            messages: chatMessages.filter(m => m.role !== 'system').map(m => ({
-              role: m.role,
-              content: m.content
-            })),
-            systemPrompt: currentChatAgent.systemPrompt,
-            temperature: currentChatAgent.temperature || 0.7,
-            maxTokens: parseInt(currentChatAgent.maxTokens) || 2048
-          })
-        });
-        
-        const data = await response.json();
-        
-        // 移除加载状态
-        removeTypingIndicator();
-        
-        if (data.success) {
-          // 添加AI回复
-          const assistantMessage = {
-            role: 'assistant',
-            content: data.message,
-            timestamp: new Date().toISOString()
-          };
-          chatMessages.push(assistantMessage);
-          
-          // 保存聊天历史
-          saveChatHistory();
-        } else {
-          // 显示错误
-          const errorMessage = {
-            role: 'assistant',
-            content: `⚠️ 抱歉，出现了一些问题：${data.message}\n\n请检查您的API Key配置是否正确。`,
-            timestamp: new Date().toISOString()
-          };
-          chatMessages.push(errorMessage);
-        }
-        
-        // 重新渲染消息
-        renderChatMessages();
-        
-      } catch (error) {
-        console.error('发送消息失败:', error);
-        removeTypingIndicator();
-        
-        const errorMessage = {
-          role: 'assistant',
-          content: `⚠️ 网络错误：${error.message}\n\n请检查网络连接后重试。`,
-          timestamp: new Date().toISOString()
-        };
-        chatMessages.push(errorMessage);
-        renderChatMessages();
-      } finally {
-        isAiResponding = false;
-        document.getElementById('chatSendBtn').disabled = false;
-      }
-    }
-
-    function addTypingIndicator() {
-      const container = document.getElementById('chatMessages');
-      const typingHtml = `
-        <div class="chat-message assistant" id="typingIndicator">
-          <div class="chat-message-avatar">${currentChatAgent.customIcon || currentChatAgent.logo}</div>
-          <div>
-            <div class="chat-message-content">
-              <div class="chat-typing">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      container.insertAdjacentHTML('beforeend', typingHtml);
-      container.scrollTop = container.scrollHeight;
-    }
-
-    function removeTypingIndicator() {
-      const indicator = document.getElementById('typingIndicator');
-      if (indicator) {
-        indicator.remove();
-      }
-    }
-
-    function saveChatHistory() {
-      if (!currentChatAgent) return;
-      
-      let agents;
-      if (currentChatAgent.type === 'created') {
-        agents = getCreatedAgents();
-      } else {
-        agents = getPurchasedAgents();
-      }
-      
-      const index = agents.findIndex(a => a.id === currentChatAgent.id);
-      if (index !== -1) {
-        agents[index].chatHistory = chatMessages;
-        if (currentChatAgent.type === 'created') {
-          localStorage.setItem('createdAgents', JSON.stringify(agents));
-        } else {
-          localStorage.setItem('purchasedAgents', JSON.stringify(agents));
-        }
       }
     }
 
@@ -6104,6 +5448,7 @@
     // 退出登录
     function logout() {
       sessionStorage.removeItem('user');
+      sessionStorage.removeItem('token');
       window.location.href = '/';
     }
 
@@ -6115,8 +5460,10 @@
         return;
       }
 
-      document.getElementById('userName').textContent = user.username;
-      document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+      const userNameEl = document.getElementById('userName');
+      const userAvatarEl = document.getElementById('userAvatar');
+      if (userNameEl) userNameEl.textContent = user.username;
+      if (userAvatarEl) userAvatarEl.textContent = user.username.charAt(0).toUpperCase();
 
       renderMenu();
       renderContent();
@@ -6716,2672 +6063,6 @@
       renderNotifications();
     }
 
-    // ========== 数字人模块 ==========
-    
-    // 获取用户创建的智能体列表
-    function getAgentOptions() {
-      const agents = JSON.parse(localStorage.getItem('createdAgents') || '[]');
-      return agents;
-    }
-    
-    // 获取数字人列表
-    function getDigitalHumans() {
-      return JSON.parse(localStorage.getItem('digitalHumans') || '[]');
-    }
-    
-    // 保存数字人列表
-    function saveDigitalHumans(humans) {
-      localStorage.setItem('digitalHumans', JSON.stringify(humans));
-    }
-    
-    // 检查并更新超时的数字人（超过5分钟仍在处理中则标记为失败）
-    function checkAndUpdateTimeoutDigitalHumans() {
-      const TIMEOUT_MS = 5 * 60 * 1000; // 5分钟超时
-      const humans = getDigitalHumans();
-      const videos = getGeneratedVideos();
-      let humansUpdated = false;
-      let videosUpdated = false;
-      
-      humans.forEach(h => {
-        if (h.status === 'processing') {
-          const createTime = new Date(h.createDate).getTime();
-          const elapsed = Date.now() - createTime;
-          
-          if (elapsed > TIMEOUT_MS) {
-            h.status = 'failed';
-            h.error = '生成超时，请重试（超过5分钟未完成）';
-            humansUpdated = true;
-            
-            // 同时更新关联的视频
-            videos.forEach(v => {
-              if (v.digitalHumanId === h.id && v.status === 'processing') {
-                v.status = 'failed';
-                v.error = '生成超时';
-                videosUpdated = true;
-              }
-            });
-          }
-        }
-      });
-      
-      // 检查独立的视频任务
-      videos.forEach(v => {
-        if (v.status === 'processing') {
-          const createTime = new Date(v.createDate).getTime();
-          const elapsed = Date.now() - createTime;
-          
-          if (elapsed > TIMEOUT_MS) {
-            v.status = 'failed';
-            v.error = '生成超时，请重试（超过5分钟未完成）';
-            videosUpdated = true;
-          }
-        }
-      });
-      
-      if (humansUpdated) {
-        saveDigitalHumans(humans);
-      }
-      if (videosUpdated) {
-        saveGeneratedVideos(videos);
-      }
-    }
-    
-    // 渲染创建数字人页面
-    function renderDigitalHumanCreate(config) {
-      const agents = getAgentOptions();
-      
-      document.getElementById('contentArea').innerHTML = `
-        <div class="page-header">
-          <div class="page-title">
-            <div class="page-title-icon ${config.iconColor}">${config.icon}</div>
-            ${config.title}
-          </div>
-          <div class="page-desc">${config.desc}</div>
-        </div>
-        
-        <div class="dh-create-container">
-          <!-- 步骤指示器 -->
-          <div class="dh-steps">
-            <div class="dh-step active" data-step="1">
-              <div class="dh-step-num">1</div>
-              <div class="dh-step-text">上传素材</div>
-            </div>
-            <div class="dh-step-line"></div>
-            <div class="dh-step" data-step="2">
-              <div class="dh-step-num">2</div>
-              <div class="dh-step-text">选择智能体</div>
-            </div>
-            <div class="dh-step-line"></div>
-            <div class="dh-step" data-step="3">
-              <div class="dh-step-num">3</div>
-              <div class="dh-step-text">生成数字人</div>
-            </div>
-          </div>
-          
-          <!-- 步骤1：上传素材 -->
-          <div class="dh-step-content active" id="dhStep1">
-            <h3 class="dh-section-title">📁 上传素材</h3>
-            <p class="dh-section-desc">上传您的视频、图片或音频素材，AI将学习您的形象和声音</p>
-            
-            <div class="dh-upload-grid">
-              <!-- 视频上传 -->
-              <div class="dh-upload-card" onclick="triggerUpload('video')">
-                <input type="file" id="uploadVideo" accept="video/*" onchange="handleFileUpload(this, 'video')" style="display: none;">
-                <div class="dh-upload-icon">🎬</div>
-                <div class="dh-upload-title">上传视频</div>
-                <div class="dh-upload-desc">支持 MP4、MOV、AVI 格式<br>建议时长 1-5 分钟</div>
-                <div class="dh-upload-hint">或拖拽文件到此处</div>
-                <div class="dh-upload-preview" id="videoPreview"></div>
-              </div>
-              
-              <!-- 图片上传 -->
-              <div class="dh-upload-card" onclick="triggerUpload('image')">
-                <input type="file" id="uploadImage" accept="image/*" onchange="handleFileUpload(this, 'image')" style="display: none;">
-                <div class="dh-upload-icon">🖼️</div>
-                <div class="dh-upload-title">上传图片</div>
-                <div class="dh-upload-desc">支持 JPG、PNG、WEBP 格式<br>建议正面清晰照片</div>
-                <div class="dh-upload-hint">或拖拽文件到此处</div>
-                <div class="dh-upload-preview" id="imagePreview"></div>
-              </div>
-              
-              <!-- 音频上传 -->
-              <div class="dh-upload-card" onclick="triggerUpload('audio')">
-                <input type="file" id="uploadAudio" accept="audio/*" onchange="handleFileUpload(this, 'audio')" style="display: none;">
-                <div class="dh-upload-icon">🎤</div>
-                <div class="dh-upload-title">上传音频</div>
-                <div class="dh-upload-desc">支持 MP3、WAV、M4A 格式<br>建议时长 30秒-2分钟</div>
-                <div class="dh-upload-hint">或拖拽文件到此处</div>
-                <div class="dh-upload-preview" id="audioPreview"></div>
-              </div>
-              
-              <!-- 录制功能 -->
-              <div class="dh-upload-card record" onclick="openRecordModal()">
-                <div class="dh-upload-icon">📹</div>
-                <div class="dh-upload-title">录制视频/音频</div>
-                <div class="dh-upload-desc">使用摄像头和麦克风<br>实时录制您的形象和声音</div>
-                <div class="dh-upload-hint">点击开始录制</div>
-              </div>
-            </div>
-            
-            <!-- 样本素材区域 -->
-            <div class="dh-sample-section">
-              <div class="dh-sample-divider">
-                <span>或使用样本素材</span>
-              </div>
-              
-              <div class="dh-sample-tabs">
-                <button class="dh-sample-tab active" data-type="all" onclick="filterSamples('all')">全部</button>
-                <button class="dh-sample-tab" data-type="video" onclick="filterSamples('video')">🎬 视频</button>
-                <button class="dh-sample-tab" data-type="photo" onclick="filterSamples('photo')">📷 照片</button>
-                <button class="dh-sample-tab" data-type="audio" onclick="filterSamples('audio')">🎤 音频</button>
-              </div>
-              
-              <div class="dh-sample-grid" id="sampleGrid">
-                <!-- 样本将由JS动态生成 -->
-              </div>
-            </div>
-            
-            <div class="dh-btn-group">
-              <button class="dh-btn primary" onclick="goToStep(2)" id="btnStep1Next" disabled>
-                下一步：选择智能体 →
-              </button>
-            </div>
-          </div>
-          
-          <!-- 步骤2：选择智能体 -->
-          <div class="dh-step-content" id="dhStep2">
-            <h3 class="dh-section-title">🤖 选择AI智能体</h3>
-            <p class="dh-section-desc">选择一个您创建的智能体，赋予数字人AI能力</p>
-            
-            ${agents.length === 0 ? `
-              <div class="dh-empty-agent">
-                <div class="dh-empty-icon">🔧</div>
-                <div class="dh-empty-title">暂无可用智能体</div>
-                <div class="dh-empty-desc">请先创建一个智能体，然后回来继续创建数字人</div>
-                <button class="dh-btn primary" onclick="window.location.href='page.html?page=user-agent'">
-                  去创建智能体
-                </button>
-              </div>
-            ` : `
-              <div class="dh-agent-grid">
-                ${agents.map(agent => `
-                  <div class="dh-agent-card" data-agent-id="${agent.id}" onclick="selectAgent('${agent.id}')">
-                    <div class="dh-agent-logo" style="background: ${agent.color}15;">${agent.logo}</div>
-                    <div class="dh-agent-info">
-                      <div class="dh-agent-name">${agent.name}</div>
-                      <div class="dh-agent-platform">${agent.platform}</div>
-                    </div>
-                    <div class="dh-agent-check">✓</div>
-                  </div>
-                `).join('')}
-              </div>
-            `}
-            
-            <div class="dh-btn-group">
-              <button class="dh-btn secondary" onclick="goToStep(1)">← 上一步</button>
-              <button class="dh-btn primary" onclick="goToStep(3)" id="btnStep2Next" disabled>
-                下一步：生成数字人 →
-              </button>
-            </div>
-          </div>
-          
-          <!-- 步骤3：配置并生成 -->
-          <div class="dh-step-content" id="dhStep3">
-            <h3 class="dh-section-title">✨ 配置数字人</h3>
-            <p class="dh-section-desc">为您的数字人设置名称和个性化参数</p>
-            
-            <div class="dh-config-form">
-              <div class="dh-form-group">
-                <label class="dh-form-label">数字人名称</label>
-                <input type="text" class="dh-form-input" id="dhName" placeholder="给您的数字人起个名字">
-              </div>
-              
-              <div class="dh-form-group">
-                <label class="dh-form-label">数字人简介</label>
-                <textarea class="dh-form-textarea" id="dhDesc" placeholder="描述数字人的特点和用途"></textarea>
-              </div>
-              
-              <div class="dh-form-group">
-                <label class="dh-form-label">选择形象风格</label>
-                <div class="dh-style-grid">
-                  <div class="dh-style-item selected" data-style="natural" onclick="selectStyle('natural')">
-                    <span>🎯</span> 自然风格
-                  </div>
-                  <div class="dh-style-item" data-style="professional" onclick="selectStyle('professional')">
-                    <span>👔</span> 专业商务
-                  </div>
-                  <div class="dh-style-item" data-style="casual" onclick="selectStyle('casual')">
-                    <span>😊</span> 轻松亲切
-                  </div>
-                  <div class="dh-style-item" data-style="energetic" onclick="selectStyle('energetic')">
-                    <span>🔥</span> 活力四射
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="dh-btn-group">
-              <button class="dh-btn secondary" onclick="goToStep(2)">← 上一步</button>
-              <button class="dh-btn primary generate" onclick="generateDigitalHuman()">
-                🚀 生成数字人
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      initUploadDragDrop();
-      // 延迟渲染样本，确保DOM已更新
-      setTimeout(function() {
-        renderSampleGrid();
-      }, 100);
-    }
-    
-    // 数字人创建相关变量（提前定义）
-    let uploadedFiles = { video: null, image: null, audio: null };
-    let selectedAgentId = null;
-    let selectedStyle = 'natural';
-    let selectedSampleId = null;
-    
-    // 样本素材数据（提前定义）
-    const sampleAssets = [
-      // 视频样本
-      {
-        id: 'video_01',
-        type: 'video',
-        name: '商务男士 - 李明',
-        gender: 'male',
-        avatar: '👨‍💼',
-        duration: '02:30',
-        desc: '专业商务风格，适合企业宣传',
-        tag: 'hot',
-        style: 'professional'
-      },
-      {
-        id: 'video_02',
-        type: 'video',
-        name: '活力女主播 - 小雨',
-        gender: 'female',
-        avatar: '👩‍🎤',
-        duration: '03:15',
-        desc: '活泼开朗，适合带货直播',
-        tag: 'hot',
-        style: 'energetic'
-      },
-      {
-        id: 'video_03',
-        type: 'video',
-        name: '温柔讲师 - 王老师',
-        gender: 'female',
-        avatar: '👩‍🏫',
-        duration: '04:00',
-        desc: '亲切自然，适合教育培训',
-        tag: 'new',
-        style: 'natural'
-      },
-      {
-        id: 'video_04',
-        type: 'video',
-        name: '科技达人 - 张峰',
-        gender: 'male',
-        avatar: '👨‍💻',
-        duration: '02:45',
-        desc: '科技感强，适合产品评测',
-        style: 'casual'
-      },
-      // 照片样本
-      {
-        id: 'photo_01',
-        type: 'photo',
-        name: '职业女性 - 林雪',
-        gender: 'female',
-        avatar: '👩‍💼',
-        desc: '正装形象，适合金融保险',
-        tag: 'hot',
-        style: 'professional'
-      },
-      {
-        id: 'photo_02',
-        type: 'photo',
-        name: '阳光男孩 - 陈浩',
-        gender: 'male',
-        avatar: '🧑',
-        desc: '年轻阳光，适合时尚潮流',
-        tag: 'new',
-        style: 'casual'
-      },
-      {
-        id: 'photo_03',
-        type: 'photo',
-        name: '知性女士 - 刘芳',
-        gender: 'female',
-        avatar: '👩',
-        desc: '知性优雅，适合美妆护肤',
-        style: 'natural'
-      },
-      {
-        id: 'photo_04',
-        type: 'photo',
-        name: '成熟男士 - 赵总',
-        gender: 'male',
-        avatar: '🧔',
-        desc: '稳重成熟，适合企业高管',
-        style: 'professional'
-      },
-      {
-        id: 'photo_05',
-        type: 'photo',
-        name: '甜美女生 - 小萌',
-        gender: 'female',
-        avatar: '👧',
-        desc: '甜美可爱，适合美食零食',
-        tag: 'hot',
-        style: 'energetic'
-      },
-      // 音频样本
-      {
-        id: 'audio_01',
-        type: 'audio',
-        name: '磁性男声 - 大伟',
-        gender: 'male',
-        avatar: '🎙️',
-        duration: '00:45',
-        desc: '低沉磁性，适合品牌广告',
-        tag: 'hot',
-        style: 'professional'
-      },
-      {
-        id: 'audio_02',
-        type: 'audio',
-        name: '甜美女声 - 小美',
-        gender: 'female',
-        avatar: '🎤',
-        duration: '00:30',
-        desc: '甜美活泼，适合年轻品牌',
-        tag: 'new',
-        style: 'energetic'
-      },
-      {
-        id: 'audio_03',
-        type: 'audio',
-        name: '温暖男声 - 阿杰',
-        gender: 'male',
-        avatar: '🎧',
-        duration: '00:50',
-        desc: '温暖治愈，适合情感内容',
-        style: 'natural'
-      },
-      {
-        id: 'audio_04',
-        type: 'audio',
-        name: '专业女声 - 晓晓',
-        gender: 'female',
-        avatar: '📻',
-        duration: '00:40',
-        desc: '标准播音，适合新闻资讯',
-        style: 'professional'
-      }
-    ];
-    
-    // 渲染样本网格
-    function renderSampleGrid(filter = 'all') {
-      const grid = document.getElementById('sampleGrid');
-      if (!grid) return;
-      
-      let samples = sampleAssets;
-      if (filter !== 'all') {
-        samples = sampleAssets.filter(s => s.type === filter);
-      }
-      
-      grid.innerHTML = samples.map(sample => {
-        const typeLabel = sample.type === 'video' ? '🎬 视频' : sample.type === 'photo' ? '📷 照片' : '🎤 音频';
-        const genderIcon = sample.gender === 'male' ? '♂️' : '♀️';
-        const tagHtml = sample.tag ? '<span class="dh-sample-tag ' + sample.tag + '">' + (sample.tag === 'hot' ? '🔥热门' : '✨新') + '</span>' : '';
-        const durationHtml = sample.duration ? '<div class="dh-sample-duration">' + sample.duration + '</div>' : '';
-        const selectedClass = selectedSampleId === sample.id ? 'selected' : '';
-        
-        return '<div class="dh-sample-card ' + selectedClass + '" data-sample-id="' + sample.id + '" onclick="selectSample(\'' + sample.id + '\')">' +
-          '<div class="dh-sample-preview">' +
-            '<div class="dh-sample-preview-icon">' + sample.avatar + '</div>' +
-            '<div class="dh-sample-type-badge">' + typeLabel + '</div>' +
-            durationHtml +
-            '<div class="dh-sample-check">✓</div>' +
-          '</div>' +
-          '<div class="dh-sample-info">' +
-            '<div class="dh-sample-name">' + sample.name + '</div>' +
-            '<div class="dh-sample-meta">' +
-              '<span class="dh-sample-gender">' + genderIcon + ' ' + (sample.gender === 'male' ? '男' : '女') + '</span>' +
-              tagHtml +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-    
-    // 筛选样本
-    function filterSamples(type) {
-      document.querySelectorAll('.dh-sample-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.type === type);
-      });
-      renderSampleGrid(type);
-    }
-    
-    // 选择样本
-    function selectSample(sampleId) {
-      const sample = sampleAssets.find(s => s.id === sampleId);
-      if (!sample) return;
-      
-      // 切换选中状态
-      if (selectedSampleId === sampleId) {
-        selectedSampleId = null;
-        // 清除上传文件
-        uploadedFiles = { video: null, image: null, audio: null };
-        document.getElementById('videoPreview').style.display = 'none';
-        document.getElementById('imagePreview').style.display = 'none';
-        document.getElementById('audioPreview').style.display = 'none';
-      } else {
-        selectedSampleId = sampleId;
-        
-        // 根据类型设置上传文件（模拟）
-        uploadedFiles = { video: null, image: null, audio: null };
-        if (sample.type === 'video') {
-          uploadedFiles.video = { name: '样本_' + sample.name + '.mp4', isSample: true, sampleId: sampleId };
-          document.getElementById('videoPreview').innerHTML = '<div class="dh-file-uploaded">✅ 样本: ' + sample.name + '</div>';
-          document.getElementById('videoPreview').style.display = 'block';
-          document.getElementById('imagePreview').style.display = 'none';
-          document.getElementById('audioPreview').style.display = 'none';
-        } else if (sample.type === 'photo') {
-          uploadedFiles.image = { name: '样本_' + sample.name + '.jpg', isSample: true, sampleId: sampleId };
-          document.getElementById('imagePreview').innerHTML = '<div class="dh-file-uploaded">✅ 样本: ' + sample.name + '</div>';
-          document.getElementById('imagePreview').style.display = 'block';
-          document.getElementById('videoPreview').style.display = 'none';
-          document.getElementById('audioPreview').style.display = 'none';
-        } else {
-          uploadedFiles.audio = { name: '样本_' + sample.name + '.mp3', isSample: true, sampleId: sampleId };
-          document.getElementById('audioPreview').innerHTML = '<div class="dh-file-uploaded">✅ 样本: ' + sample.name + '</div>';
-          document.getElementById('audioPreview').style.display = 'block';
-          document.getElementById('videoPreview').style.display = 'none';
-          document.getElementById('imagePreview').style.display = 'none';
-        }
-        
-        // 自动设置风格
-        selectedStyle = sample.style;
-      }
-      
-      // 更新UI
-      document.querySelectorAll('.dh-sample-card').forEach(card => {
-        card.classList.toggle('selected', card.dataset.sampleId === selectedSampleId);
-      });
-      
-      checkStep1Complete();
-    }
-    
-    function triggerUpload(type) {
-      document.getElementById('upload' + type.charAt(0).toUpperCase() + type.slice(1)).click();
-    }
-    
-    function handleFileUpload(input, type) {
-      const file = input.files[0];
-      if (file) {
-        uploadedFiles[type] = file;
-        const previewEl = document.getElementById(type + 'Preview');
-        previewEl.innerHTML = `<div class="dh-file-uploaded">✅ ${file.name}</div>`;
-        previewEl.style.display = 'block';
-        
-        // 检查是否可以进入下一步
-        checkStep1Complete();
-      }
-    }
-    
-    function checkStep1Complete() {
-      const hasFile = uploadedFiles.video || uploadedFiles.image || uploadedFiles.audio || selectedSampleId;
-      const btn = document.getElementById('btnStep1Next');
-      if (btn) {
-        btn.disabled = !hasFile;
-      }
-      // 调试信息
-      console.log('步骤1检查:', {
-        hasFile: hasFile,
-        video: uploadedFiles.video ? uploadedFiles.video.name : null,
-        image: uploadedFiles.image ? uploadedFiles.image.name : null,
-        audio: uploadedFiles.audio ? uploadedFiles.audio.name : null,
-        sampleId: selectedSampleId
-      });
-    }
-    
-    function selectAgent(agentId) {
-      selectedAgentId = agentId;
-      document.querySelectorAll('.dh-agent-card').forEach(card => {
-        card.classList.toggle('selected', card.dataset.agentId === agentId);
-      });
-      const btn = document.getElementById('btnStep2Next');
-      if (btn) {
-        btn.disabled = false;
-      }
-      // 调试信息
-      console.log('步骤2 - 选择智能体:', {
-        agentId: selectedAgentId
-      });
-    }
-    
-    function selectStyle(style) {
-      selectedStyle = style;
-      document.querySelectorAll('.dh-style-item').forEach(item => {
-        item.classList.toggle('selected', item.dataset.style === style);
-      });
-    }
-    
-    function goToStep(step) {
-      document.querySelectorAll('.dh-step').forEach((el, idx) => {
-        el.classList.toggle('active', idx < step);
-        el.classList.toggle('completed', idx < step - 1);
-      });
-      document.querySelectorAll('.dh-step-content').forEach((el, idx) => {
-        el.classList.toggle('active', idx === step - 1);
-      });
-    }
-    
-    function initUploadDragDrop() {
-      document.querySelectorAll('.dh-upload-card').forEach(card => {
-        if (card.classList.contains('record')) return;
-        
-        card.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          card.classList.add('dragover');
-        });
-        
-        card.addEventListener('dragleave', () => {
-          card.classList.remove('dragover');
-        });
-        
-        card.addEventListener('drop', (e) => {
-          e.preventDefault();
-          card.classList.remove('dragover');
-          const input = card.querySelector('input[type="file"]');
-          if (input && e.dataTransfer.files.length > 0) {
-            input.files = e.dataTransfer.files;
-            input.dispatchEvent(new Event('change'));
-          }
-        });
-      });
-    }
-    
-    // ========== 录制功能 ==========
-    let mediaStream = null;
-    let mediaRecorder = null;
-    let recordedChunks = [];
-    let recordingMode = 'video'; // video, photo, audio
-    let recordingStartTime = null;
-    let recordingTimer = null;
-    let audioContext = null;
-    let analyser = null;
-    let recordedBlob = null;
-    
-    function openRecordModal() {
-      document.getElementById('recordModalOverlay').classList.add('show');
-      resetRecordingState();
-    }
-    
-    function closeRecordModal(event) {
-      if (!event || event.target === document.getElementById('recordModalOverlay')) {
-        document.getElementById('recordModalOverlay').classList.remove('show');
-        stopCamera();
-        resetRecordingState();
-      }
-    }
-    
-    function resetRecordingState() {
-      recordedChunks = [];
-      recordedBlob = null;
-      
-      // 重置UI
-      document.getElementById('recordResult').style.display = 'none';
-      document.getElementById('recordTimer').style.display = 'none';
-      document.getElementById('capturedPhoto').style.display = 'none';
-      document.getElementById('previewPlaceholder').style.display = 'flex';
-      document.getElementById('recordPreview').style.display = 'none';
-      
-      // 重置按钮
-      updateRecordButtons('initial');
-    }
-    
-    function switchRecordMode(mode) {
-      recordingMode = mode;
-      
-      // 更新标签样式
-      document.querySelectorAll('.record-mode-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.mode === mode);
-      });
-      
-      // 停止当前设备
-      stopCamera();
-      resetRecordingState();
-      
-      // 更新UI显示
-      const previewContainer = document.querySelector('.record-preview-container');
-      const audioVisualizer = document.getElementById('audioVisualizer');
-      
-      if (mode === 'audio') {
-        previewContainer.style.display = 'none';
-        audioVisualizer.style.display = 'block';
-        document.getElementById('btnStartCamera').style.display = 'none';
-        document.getElementById('btnStartMic').style.display = 'inline-block';
-      } else {
-        previewContainer.style.display = 'block';
-        audioVisualizer.style.display = 'none';
-        document.getElementById('btnStartCamera').style.display = 'inline-block';
-        document.getElementById('btnStartMic').style.display = 'none';
-      }
-      
-      // 更新占位符图标
-      const placeholder = document.getElementById('previewPlaceholder');
-      if (mode === 'video') {
-        placeholder.innerHTML = '<div class="record-preview-icon">🎬</div><div>点击下方按钮开启摄像头</div>';
-      } else if (mode === 'photo') {
-        placeholder.innerHTML = '<div class="record-preview-icon">📷</div><div>点击下方按钮开启摄像头</div>';
-      } else {
-        placeholder.innerHTML = '<div class="record-preview-icon">🎤</div><div>点击下方按钮开启麦克风</div>';
-      }
-    }
-    
-    async function startCamera() {
-      try {
-        const constraints = {
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: 'user'
-          },
-          audio: recordingMode === 'video'
-        };
-        
-        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-        
-        const videoEl = document.getElementById('recordPreview');
-        videoEl.srcObject = mediaStream;
-        videoEl.style.display = 'block';
-        document.getElementById('previewPlaceholder').style.display = 'none';
-        
-        updateRecordButtons('camera-ready');
-        
-      } catch (error) {
-        console.error('无法访问摄像头:', error);
-        alert('❌ 无法访问摄像头\n\n请确保：\n1. 已授权浏览器使用摄像头\n2. 没有其他程序占用摄像头\n3. 设备有可用的摄像头');
-      }
-    }
-    
-    async function startMicrophone() {
-      try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        // 设置音频可视化
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        const source = audioContext.createMediaStreamSource(mediaStream);
-        source.connect(analyser);
-        analyser.fftSize = 256;
-        
-        document.getElementById('previewPlaceholder').style.display = 'none';
-        visualizeAudio();
-        
-        updateRecordButtons('mic-ready');
-        
-      } catch (error) {
-        console.error('无法访问麦克风:', error);
-        alert('❌ 无法访问麦克风\n\n请确保：\n1. 已授权浏览器使用麦克风\n2. 设备有可用的麦克风');
-      }
-    }
-    
-    function visualizeAudio() {
-      if (!analyser) return;
-      
-      const canvas = document.getElementById('audioCanvas');
-      const ctx = canvas.getContext('2d');
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      
-      function draw() {
-        if (!analyser) return;
-        requestAnimationFrame(draw);
-        
-        analyser.getByteFrequencyData(dataArray);
-        
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        const barWidth = (canvas.width / bufferLength) * 2.5;
-        let x = 0;
-        
-        for (let i = 0; i < bufferLength; i++) {
-          const barHeight = (dataArray[i] / 255) * canvas.height;
-          
-          const gradient = ctx.createLinearGradient(0, canvas.height - barHeight, 0, canvas.height);
-          gradient.addColorStop(0, '#1890ff');
-          gradient.addColorStop(1, '#722ed1');
-          
-          ctx.fillStyle = gradient;
-          ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-          x += barWidth + 1;
-        }
-      }
-      
-      draw();
-    }
-    
-    function stopCamera() {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        mediaStream = null;
-      }
-      
-      if (audioContext) {
-        audioContext.close();
-        audioContext = null;
-        analyser = null;
-      }
-      
-      const videoEl = document.getElementById('recordPreview');
-      videoEl.srcObject = null;
-      videoEl.style.display = 'none';
-      
-      if (recordingTimer) {
-        clearInterval(recordingTimer);
-        recordingTimer = null;
-      }
-      
-      document.getElementById('previewPlaceholder').style.display = 'flex';
-      updateRecordButtons('initial');
-    }
-    
-    function startRecording() {
-      if (!mediaStream) return;
-      
-      recordedChunks = [];
-      
-      const mimeType = recordingMode === 'audio' ? 'audio/webm' : 'video/webm';
-      const options = { mimeType };
-      
-      try {
-        mediaRecorder = new MediaRecorder(mediaStream, options);
-      } catch (e) {
-        mediaRecorder = new MediaRecorder(mediaStream);
-      }
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordedChunks.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        const mimeType = recordingMode === 'audio' ? 'audio/webm' : 'video/webm';
-        recordedBlob = new Blob(recordedChunks, { type: mimeType });
-        showRecordingResult();
-      };
-      
-      mediaRecorder.start();
-      recordingStartTime = Date.now();
-      
-      // 开始计时
-      document.getElementById('recordTimer').style.display = 'flex';
-      recordingTimer = setInterval(updateRecordTime, 1000);
-      
-      updateRecordButtons('recording');
-    }
-    
-    function updateRecordTime() {
-      const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-      const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
-      const seconds = (elapsed % 60).toString().padStart(2, '0');
-      document.getElementById('recordTime').textContent = `${minutes}:${seconds}`;
-    }
-    
-    function stopRecording() {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
-      
-      if (recordingTimer) {
-        clearInterval(recordingTimer);
-        recordingTimer = null;
-      }
-      
-      document.getElementById('recordTimer').style.display = 'none';
-    }
-    
-    function capturePhoto() {
-      const video = document.getElementById('recordPreview');
-      const canvas = document.getElementById('recordCanvas');
-      const ctx = canvas.getContext('2d');
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
-      
-      // 转换为Blob
-      canvas.toBlob((blob) => {
-        recordedBlob = blob;
-        
-        // 显示拍摄的照片
-        const img = document.getElementById('capturedPhoto');
-        img.src = URL.createObjectURL(blob);
-        img.style.display = 'block';
-        video.style.display = 'none';
-        
-        showRecordingResult();
-      }, 'image/jpeg', 0.95);
-    }
-    
-    function showRecordingResult() {
-      const result = document.getElementById('recordResult');
-      const info = document.getElementById('recordResultInfo');
-      
-      let infoText = '';
-      if (recordingMode === 'video') {
-        const duration = Math.floor((Date.now() - recordingStartTime) / 1000);
-        infoText = `视频时长: ${Math.floor(duration / 60)}分${duration % 60}秒 | 大小: ${(recordedBlob.size / 1024 / 1024).toFixed(2)} MB`;
-      } else if (recordingMode === 'photo') {
-        infoText = `照片大小: ${(recordedBlob.size / 1024).toFixed(2)} KB`;
-      } else {
-        const duration = Math.floor((Date.now() - recordingStartTime) / 1000);
-        infoText = `音频时长: ${Math.floor(duration / 60)}分${duration % 60}秒 | 大小: ${(recordedBlob.size / 1024).toFixed(2)} KB`;
-      }
-      
-      info.textContent = infoText;
-      result.style.display = 'block';
-      
-      updateRecordButtons('recorded');
-    }
-    
-    function retakeRecording() {
-      resetRecordingState();
-      
-      // 重新开启设备
-      if (recordingMode === 'audio') {
-        startMicrophone();
-      } else {
-        startCamera();
-      }
-    }
-    
-    function useRecording() {
-      if (!recordedBlob) {
-        alert('没有可用的录制内容');
-        return;
-      }
-      
-      // 创建文件对象
-      let fileName, fileType;
-      if (recordingMode === 'video') {
-        fileName = `录制视频_${Date.now()}.webm`;
-        fileType = 'video';
-        uploadedFiles.video = new File([recordedBlob], fileName, { type: 'video/webm' });
-        document.getElementById('videoPreview').innerHTML = `<div class="dh-file-uploaded">✅ ${fileName}</div>`;
-        document.getElementById('videoPreview').style.display = 'block';
-      } else if (recordingMode === 'photo') {
-        fileName = `拍摄照片_${Date.now()}.jpg`;
-        fileType = 'image';
-        uploadedFiles.image = new File([recordedBlob], fileName, { type: 'image/jpeg' });
-        document.getElementById('imagePreview').innerHTML = `<div class="dh-file-uploaded">✅ ${fileName}</div>`;
-        document.getElementById('imagePreview').style.display = 'block';
-      } else {
-        fileName = `录制音频_${Date.now()}.webm`;
-        fileType = 'audio';
-        uploadedFiles.audio = new File([recordedBlob], fileName, { type: 'audio/webm' });
-        document.getElementById('audioPreview').innerHTML = `<div class="dh-file-uploaded">✅ ${fileName}</div>`;
-        document.getElementById('audioPreview').style.display = 'block';
-      }
-      
-      // 检查是否可以进入下一步
-      checkStep1Complete();
-      
-      // 关闭模态框
-      closeRecordModal();
-      
-      alert(`✅ ${recordingMode === 'video' ? '视频' : recordingMode === 'photo' ? '照片' : '音频'}已保存！`);
-    }
-    
-    function updateRecordButtons(state) {
-      const btnStartCamera = document.getElementById('btnStartCamera');
-      const btnStartMic = document.getElementById('btnStartMic');
-      const btnStopCamera = document.getElementById('btnStopCamera');
-      const btnStartRecord = document.getElementById('btnStartRecord');
-      const btnStopRecord = document.getElementById('btnStopRecord');
-      const btnCapturePhoto = document.getElementById('btnCapturePhoto');
-      
-      // 隐藏所有按钮
-      [btnStartCamera, btnStartMic, btnStopCamera, btnStartRecord, btnStopRecord, btnCapturePhoto].forEach(btn => {
-        btn.style.display = 'none';
-      });
-      
-      switch (state) {
-        case 'initial':
-          if (recordingMode === 'audio') {
-            btnStartMic.style.display = 'inline-block';
-          } else {
-            btnStartCamera.style.display = 'inline-block';
-          }
-          break;
-          
-        case 'camera-ready':
-          btnStopCamera.style.display = 'inline-block';
-          if (recordingMode === 'video') {
-            btnStartRecord.style.display = 'inline-block';
-          } else if (recordingMode === 'photo') {
-            btnCapturePhoto.style.display = 'inline-block';
-          }
-          break;
-          
-        case 'mic-ready':
-          btnStopCamera.style.display = 'inline-block';
-          btnStartRecord.style.display = 'inline-block';
-          break;
-          
-        case 'recording':
-          btnStopRecord.style.display = 'inline-block';
-          break;
-          
-        case 'recorded':
-          // 录制完成后按钮由结果区域处理
-          break;
-      }
-    }
-    
-    async function generateDigitalHuman() {
-      var name = document.getElementById('dhName').value.trim();
-      var desc = document.getElementById('dhDesc').value.trim();
-      
-      // 调试：显示当前状态
-      console.log('=== 创建数字人 - 当前状态 ===');
-      console.log('名称:', name);
-      console.log('描述:', desc);
-      console.log('风格:', selectedStyle);
-      console.log('智能体ID:', selectedAgentId);
-      console.log('样本ID:', selectedSampleId);
-      console.log('上传文件:', uploadedFiles);
-      
-      // 验证名称
-      if (!name) {
-        alert('❌ 创建失败\n\n请输入数字人名称');
-        return;
-      }
-      
-      // 验证是否有素材
-      var hasFile = uploadedFiles.video || uploadedFiles.image || uploadedFiles.audio || selectedSampleId;
-      console.log('是否有素材:', hasFile);
-      
-      if (!hasFile) {
-        alert('❌ 创建失败\n\n请先上传素材或选择样本素材\n\n调试信息:\n- 视频: ' + (uploadedFiles.video ? '有' : '无') + '\n- 图片: ' + (uploadedFiles.image ? '有' : '无') + '\n- 音频: ' + (uploadedFiles.audio ? '有' : '无') + '\n- 样本: ' + (selectedSampleId || '无'));
-        return;
-      }
-      
-      // 验证是否选择了智能体
-      if (!selectedAgentId) {
-        alert('❌ 创建失败\n\n请选择一个AI智能体\n\n请在第二步选择您创建的智能体');
-        return;
-      }
-      
-      // 检查智能体是否存在
-      var agents = getAgentOptions();
-      console.log('可用智能体:', agents);
-      
-      var selectedAgent = agents.find(function(a) { return a.id === selectedAgentId; });
-      if (!selectedAgent) {
-        alert('❌ 创建失败\n\n选择的智能体不存在，请重新选择\n\n智能体ID: ' + selectedAgentId);
-        return;
-      }
-      
-      console.log('选中的智能体:', selectedAgent);
-      
-      // 获取样本信息（如果有）
-      var sampleInfo = '';
-      if (selectedSampleId) {
-        var sample = sampleAssets.find(function(s) { return s.id === selectedSampleId; });
-        if (sample) {
-          sampleInfo = '\n• 样本: ' + sample.name + ' (' + sample.type + ')';
-        }
-      }
-      
-      // 获取上传文件信息
-      var fileInfo = '';
-      if (uploadedFiles.video) fileInfo += '\n• 视频: ' + uploadedFiles.video.name;
-      if (uploadedFiles.image) fileInfo += '\n• 图片: ' + uploadedFiles.image.name;
-      if (uploadedFiles.audio) fileInfo += '\n• 音频: ' + uploadedFiles.audio.name;
-      
-      // 显示确认信息
-      var confirmMsg = '请确认数字人信息：\n\n' +
-        '📝 名称: ' + name + '\n' +
-        '📄 描述: ' + (desc || '无') + '\n' +
-        '🎨 风格: ' + selectedStyle + '\n' +
-        '🤖 智能体: ' + selectedAgent.name + '\n' +
-        '📁 素材:' + (fileInfo || sampleInfo || ' 无') +
-        '\n\n确定要创建吗？';
-      
-      if (!confirm(confirmMsg)) {
-        return;
-      }
-      
-      var dhId = 'dh_' + Date.now();
-      var videoId = 'video_' + Date.now();
-      
-      // 获取智能体的完整信息（包括API Key）
-      var createdAgents = JSON.parse(localStorage.getItem('createdAgents') || '[]');
-      var fullAgent = createdAgents.find(function(a) { return a.id === selectedAgentId; });
-      
-      if (!fullAgent || !fullAgent.apiKey) {
-        alert('❌ 创建失败\n\n选择的智能体未配置 API Key\n\n请先编辑智能体，添加 API Key 后再试');
-        return;
-      }
-      
-      // 显示加载状态
-      var loadingOverlay = document.createElement('div');
-      loadingOverlay.id = 'aiLoadingOverlay';
-      loadingOverlay.innerHTML = `
-        <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:10000;">
-          <div style="background:#1a1a2e;padding:40px;border-radius:16px;text-align:center;max-width:400px;">
-            <div style="font-size:48px;margin-bottom:20px;">🤖</div>
-            <div style="font-size:20px;color:#fff;margin-bottom:10px;">AI正在生成数字人...</div>
-            <div style="color:#888;font-size:14px;margin-bottom:20px;">正在使用 ${fullAgent.name} 分析素材并创建人设</div>
-            <div style="display:flex;justify-content:center;gap:8px;">
-              <div style="width:12px;height:12px;background:#1890ff;border-radius:50%;animation:pulse 1s infinite;"></div>
-              <div style="width:12px;height:12px;background:#1890ff;border-radius:50%;animation:pulse 1s infinite 0.2s;"></div>
-              <div style="width:12px;height:12px;background:#1890ff;border-radius:50%;animation:pulse 1s infinite 0.4s;"></div>
-            </div>
-          </div>
-        </div>
-        <style>
-          @keyframes pulse {
-            0%, 100% { opacity: 0.3; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); }
-          }
-        </style>
-      `;
-      document.body.appendChild(loadingOverlay);
-      
-      try {
-        // 构建AI提示词
-        var materialInfo = '';
-        if (uploadedFiles.video) materialInfo += '- 视频素材: ' + uploadedFiles.video.name + '\n';
-        if (uploadedFiles.image) materialInfo += '- 图片素材: ' + uploadedFiles.image.name + '\n';
-        if (uploadedFiles.audio) materialInfo += '- 音频素材: ' + uploadedFiles.audio.name + '\n';
-        if (selectedSampleId) {
-          var sample = sampleAssets.find(function(s) { return s.id === selectedSampleId; });
-          if (sample) {
-            materialInfo += '- 样本素材: ' + sample.name + ' (' + sample.desc + ')\n';
-          }
-        }
-        
-        var styleDesc = {
-          'professional': '专业正式，适合商务场景',
-          'friendly': '亲切友好，适合日常交流',
-          'energetic': '活力四射，适合年轻受众',
-          'elegant': '优雅知性，适合高端品牌'
-        };
-        
-        var aiPrompt = `你是一个数字人人设设计专家。请根据以下信息，为数字人设计一个完整的人设。
-
-【数字人基本信息】
-- 名称: ${name}
-- 用户描述: ${desc || '无特殊描述'}
-- 风格定位: ${selectedStyle} (${styleDesc[selectedStyle] || '通用风格'})
-
-【素材信息】
-${materialInfo || '未提供素材'}
-
-请按以下JSON格式输出数字人人设（直接输出JSON，不要有其他文字）：
-{
-  "personality": "性格特点描述（50字以内）",
-  "voiceStyle": "说话风格描述（30字以内）",
-  "expertise": ["专长领域1", "专长领域2", "专长领域3"],
-  "greeting": "数字人的开场白（50字以内）",
-  "catchphrase": "口头禅或标志性语句",
-  "background": "背景故事（100字以内）"
-}`;
-
-        // 获取平台ID
-        var platformId = fullAgent.platformId || getPlatformIdFromModel(fullAgent.platform);
-        
-        console.log('调用AI生成数字人人设...', {
-          platform: platformId,
-          model: fullAgent.model,
-          agentName: fullAgent.name
-        });
-        
-        // 调用AI接口
-        var response = await fetch(buildApiUrl('/api/ai/chat'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            platform: platformId,
-            apiKey: fullAgent.apiKey,
-            messages: [{ role: 'user', content: aiPrompt }],
-            systemPrompt: '你是一个专业的数字人设计师，擅长根据需求创建独特的数字人人设。请直接输出JSON格式的结果。',
-            temperature: 0.8,
-            maxTokens: 1024
-          })
-        });
-        
-        var data = await response.json();
-        
-        // 移除加载状态
-        var overlay = document.getElementById('aiLoadingOverlay');
-        if (overlay) overlay.remove();
-        
-        if (!data.success) {
-          throw new Error(data.message || 'AI生成失败');
-        }
-        
-        // 解析AI返回的人设
-        var aiResponse = data.message;
-        var persona = null;
-        
-        try {
-          // 尝试提取JSON
-          var jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            persona = JSON.parse(jsonMatch[0]);
-          }
-        } catch (e) {
-          console.warn('解析AI响应失败，使用默认人设', e);
-        }
-        
-        // 如果解析失败，使用默认人设
-        if (!persona) {
-          persona = {
-            personality: '热情、专业、值得信赖',
-            voiceStyle: '亲切自然，条理清晰',
-            expertise: ['产品介绍', '客户服务', '内容创作'],
-            greeting: '你好！我是' + name + '，很高兴见到你！',
-            catchphrase: '让我来帮你解决这个问题',
-            background: '我是一个AI数字人，专注于为用户提供优质的服务体验。'
-          };
-        }
-        
-        console.log('AI生成的人设:', persona);
-        
-        // 创建数字人对象
-        var digitalHuman = {
-          id: dhId,
-          name: name,
-          desc: desc,
-          style: selectedStyle,
-          agentId: selectedAgentId,
-          agentName: selectedAgent.name,
-          sampleId: selectedSampleId,
-          files: {
-            video: uploadedFiles.video ? uploadedFiles.video.name : null,
-            image: uploadedFiles.image ? uploadedFiles.image.name : null,
-            audio: uploadedFiles.audio ? uploadedFiles.audio.name : null
-          },
-          // AI生成的人设
-          persona: persona,
-          aiGenerated: true,
-          createDate: new Date().toISOString(),
-          status: 'ready'  // AI生成完成后直接设为ready
-        };
-        
-        // 保存数字人
-        var humans = getDigitalHumans();
-        humans.push(digitalHuman);
-        saveDigitalHumans(humans);
-        
-        // 同时创建一个数字人生成视频记录
-        var video = {
-          id: videoId,
-          type: 'digital-human',
-          title: '数字人生成 - ' + name,
-          status: 'ready',
-          duration: '00:' + (15 + Math.floor(Math.random() * 30)).toString().padStart(2, '0'),
-          createDate: new Date().toISOString(),
-          digitalHumanId: dhId
-        };
-        addGeneratedVideo(video);
-        
-        // 显示成功信息
-        alert('🎉 数字人创建成功！\n\n' +
-          '【' + name + '】\n\n' +
-          '📝 性格: ' + persona.personality + '\n' +
-          '🎙️ 风格: ' + persona.voiceStyle + '\n' +
-          '💬 开场白: ' + persona.greeting + '\n\n' +
-          '点击确定查看详情');
-        
-        // 跳转到列表页
-        window.location.href = 'page.html?page=digital-human-list';
-        
-      } catch (error) {
-        // 移除加载状态
-        var overlay = document.getElementById('aiLoadingOverlay');
-        if (overlay) overlay.remove();
-        
-        console.error('创建数字人失败:', error);
-        
-        // 提供更详细的错误信息
-        var errorMsg = '❌ AI生成数字人失败\n\n';
-        if (error.message.includes('Invalid') || error.message.includes('auth')) {
-          errorMsg += '原因: API Key 无效或已过期\n\n请检查智能体的 API Key 配置';
-        } else if (error.message.includes('balance') || error.message.includes('quota')) {
-          errorMsg += '原因: API 余额不足\n\n请充值后重试';
-        } else if (error.message.includes('network') || error.message.includes('timeout')) {
-          errorMsg += '原因: 网络连接失败\n\n请检查网络后重试';
-        } else {
-          errorMsg += '原因: ' + error.message + '\n\n请稍后重试';
-        }
-        
-        alert(errorMsg);
-      }
-    }
-    
-    // 根据平台名称获取平台ID
-    function getPlatformIdFromModel(platformName) {
-      var mapping = {
-        'Groq (免费)': 'groq',
-        'Groq': 'groq',
-        'OpenAI': 'openai',
-        'Claude': 'claude',
-        '文心一言': 'wenxin',
-        '通义千问': 'qianwen',
-        'Kimi': 'moonshot',
-        'DeepSeek': 'deepseek',
-        '讯飞星火': 'spark',
-        'ChatGLM': 'glm',
-        '智谱AI/GLM': 'glm',
-        '智谱AI': 'glm',
-        'Gemini': 'gemini'
-      };
-      return mapping[platformName] || 'groq';
-    }
-    
-    // 渲染数字人列表页面
-    function renderDigitalHumanList(config) {
-      // 首先检查并更新超时的数字人
-      checkAndUpdateTimeoutDigitalHumans();
-      
-      const humans = getDigitalHumans();
-      
-      if (humans.length === 0) {
-        document.getElementById('contentArea').innerHTML = `
-          <div class="page-header">
-            <div class="page-title">
-              <div class="page-title-icon ${config.iconColor}">${config.icon}</div>
-              ${config.title}
-            </div>
-            <div class="page-desc">${config.desc}</div>
-          </div>
-          <div class="empty-state">
-            <div class="empty-state-icon">👤</div>
-            <div class="empty-state-title">暂无数字人</div>
-            <div class="empty-state-desc">创建您的专属数字人，让AI为您代言</div>
-            <button class="empty-state-btn" onclick="window.location.href='page.html?page=digital-human-create'">创建数字人</button>
-          </div>
-        `;
-        return;
-      }
-      
-      const agents = getAgentOptions();
-      
-      const humansHtml = humans.map(h => {
-        const agent = agents.find(a => a.id === h.agentId);
-        let statusText, statusClass, progressInfo = '';
-        
-        if (h.status === 'ready') {
-          statusText = '✅ 可用';
-          statusClass = 'ready';
-        } else if (h.status === 'failed') {
-          statusText = '❌ 失败';
-          statusClass = 'failed';
-        } else {
-          // 计算处理时间
-          const createTime = new Date(h.createDate).getTime();
-          const now = Date.now();
-          const elapsedSeconds = Math.floor((now - createTime) / 1000);
-          const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-          
-          if (elapsedMinutes < 1) {
-            progressInfo = `（已等待 ${elapsedSeconds} 秒）`;
-          } else {
-            progressInfo = `（已等待 ${elapsedMinutes} 分钟）`;
-          }
-          
-          statusText = '⏳ 处理中';
-          statusClass = 'processing';
-        }
-        
-        // 根据状态显示不同的操作按钮
-        let actionsHtml = '';
-        if (h.status === 'ready') {
-          actionsHtml = `
-            <button class="dh-action-btn primary" onclick="useDigitalHuman('${h.id}')">使用</button>
-            <button class="dh-action-btn" onclick="editDigitalHuman('${h.id}')">编辑</button>
-          `;
-        } else if (h.status === 'failed') {
-          actionsHtml = `
-            <button class="dh-action-btn primary" onclick="retryDigitalHuman('${h.id}')">重试</button>
-          `;
-        } else {
-          // 处理中状态也可以刷新或取消
-          actionsHtml = `
-            <button class="dh-action-btn" onclick="location.reload()">刷新状态</button>
-          `;
-        }
-        
-        // 失败信息
-        const errorHtml = h.error ? `<div class="dh-list-error">⚠️ ${h.error}</div>` : '';
-        
-        // AI生成的人设信息
-        let personaHtml = '';
-        if (h.persona && h.aiGenerated) {
-          personaHtml = `
-            <div class="dh-persona-info">
-              <div class="dh-persona-badge">🤖 AI生成</div>
-              <div class="dh-persona-item"><strong>性格:</strong> ${h.persona.personality || '未设定'}</div>
-              <div class="dh-persona-item"><strong>风格:</strong> ${h.persona.voiceStyle || '未设定'}</div>
-              ${h.persona.catchphrase ? `<div class="dh-persona-item"><strong>口头禅:</strong> "${h.persona.catchphrase}"</div>` : ''}
-            </div>
-          `;
-        }
-        
-        return `
-          <div class="dh-list-card ${h.status === 'failed' ? 'failed' : ''} ${h.aiGenerated ? 'ai-generated' : ''}">
-            <div class="dh-list-avatar">${h.aiGenerated ? '🤖' : '👤'}</div>
-            <div class="dh-list-info">
-              <div class="dh-list-name">${h.name}</div>
-              <div class="dh-list-desc">${h.desc || (h.persona ? h.persona.greeting : '暂无简介')}</div>
-              ${personaHtml}
-              ${errorHtml}
-              <div class="dh-list-meta">
-                <span class="dh-list-agent">${agent ? agent.name : (h.agentName || '未关联智能体')}</span>
-                <span class="dh-list-date">创建于 ${formatDate(h.createDate)}</span>
-              </div>
-            </div>
-            <div class="dh-list-status ${statusClass}">${statusText} <small style="opacity:0.7">${progressInfo}</small></div>
-            <div class="dh-list-actions">
-              ${actionsHtml}
-              ${h.persona ? `<button class="dh-action-btn" onclick="viewPersona('${h.id}')">人设</button>` : ''}
-              <button class="dh-action-btn danger" onclick="deleteDigitalHuman('${h.id}')">删除</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-      
-      document.getElementById('contentArea').innerHTML = `
-        <div class="page-header">
-          <div class="page-title">
-            <div class="page-title-icon ${config.iconColor}">${config.icon}</div>
-            ${config.title}
-          </div>
-          <div class="page-desc">${config.desc}</div>
-        </div>
-        
-        <div style="margin-bottom: 24px;">
-          <button class="dh-btn primary" onclick="window.location.href='page.html?page=digital-human-create'">
-            ➕ 创建新数字人
-          </button>
-        </div>
-        
-        <div class="dh-list-container">
-          ${humansHtml}
-        </div>
-      `;
-    }
-    
-    function useDigitalHuman(id) {
-      window.location.href = 'page.html?page=digital-human-product&dhId=' + id;
-    }
-    
-    function editDigitalHuman(id) {
-      alert('编辑功能开发中...');
-    }
-    
-    // 查看数字人人设详情
-    function viewPersona(id) {
-      var humans = getDigitalHumans();
-      var human = humans.find(function(h) { return h.id === id; });
-      
-      if (!human || !human.persona) {
-        alert('未找到人设信息');
-        return;
-      }
-      
-      var p = human.persona;
-      var expertiseList = p.expertise ? p.expertise.join('、') : '未设定';
-      
-      var modal = document.createElement('div');
-      modal.id = 'personaModal';
-      modal.innerHTML = `
-        <div class="persona-modal-overlay" onclick="closePersonaModal()">
-          <div class="persona-modal" onclick="event.stopPropagation()">
-            <div class="persona-modal-header">
-              <div class="persona-modal-title">🤖 ${human.name} 的人设</div>
-              <button class="persona-modal-close" onclick="closePersonaModal()">×</button>
-            </div>
-            <div class="persona-modal-body">
-              <div class="persona-section">
-                <div class="persona-label">📝 性格特点</div>
-                <div class="persona-value">${p.personality || '未设定'}</div>
-              </div>
-              <div class="persona-section">
-                <div class="persona-label">🎙️ 说话风格</div>
-                <div class="persona-value">${p.voiceStyle || '未设定'}</div>
-              </div>
-              <div class="persona-section">
-                <div class="persona-label">💡 专长领域</div>
-                <div class="persona-value">${expertiseList}</div>
-              </div>
-              <div class="persona-section">
-                <div class="persona-label">👋 开场白</div>
-                <div class="persona-value highlight">"${p.greeting || '未设定'}"</div>
-              </div>
-              <div class="persona-section">
-                <div class="persona-label">💬 口头禅</div>
-                <div class="persona-value">"${p.catchphrase || '未设定'}"</div>
-              </div>
-              <div class="persona-section">
-                <div class="persona-label">📖 背景故事</div>
-                <div class="persona-value">${p.background || '未设定'}</div>
-              </div>
-            </div>
-            <div class="persona-modal-footer">
-              <button class="dh-btn" onclick="closePersonaModal()">关闭</button>
-              <button class="dh-btn primary" onclick="chatWithDigitalHuman('${id}')">与TA对话</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-    }
-    
-    function closePersonaModal() {
-      var modal = document.getElementById('personaModal');
-      if (modal) modal.remove();
-    }
-    
-    // 与数字人对话
-    function chatWithDigitalHuman(dhId) {
-      var humans = getDigitalHumans();
-      var human = humans.find(function(h) { return h.id === dhId; });
-      
-      if (!human) {
-        alert('数字人不存在');
-        return;
-      }
-      
-      // 跳转到与关联智能体的对话页面，并带上数字人信息
-      if (human.agentId) {
-        closePersonaModal();
-        // 存储数字人信息供对话页面使用
-        sessionStorage.setItem('digitalHumanContext', JSON.stringify({
-          id: human.id,
-          name: human.name,
-          persona: human.persona
-        }));
-        window.location.href = 'chat.html?id=' + human.agentId + '&type=created&dh=' + dhId;
-      } else {
-        alert('此数字人未关联智能体，无法对话');
-      }
-    }
-    
-    // 重试生成数字人
-    function retryDigitalHuman(id) {
-      var humans = getDigitalHumans();
-      var idx = humans.findIndex(function(h) { return h.id === id; });
-      
-      if (idx === -1) {
-        alert('数字人不存在');
-        return;
-      }
-      
-      // 更新状态为处理中
-      humans[idx].status = 'processing';
-      humans[idx].error = null;
-      saveDigitalHumans(humans);
-      
-      // 更新相关视频状态
-      var videos = getGeneratedVideos();
-      videos.forEach(function(v) {
-        if (v.digitalHumanId === id) {
-          v.status = 'processing';
-          v.error = null;
-        }
-      });
-      saveGeneratedVideos(videos);
-      
-      alert('🔄 重试任务已提交！\n\n系统正在重新处理素材...');
-      
-      // 模拟重新处理
-      setTimeout(function() {
-        var updatedHumans = getDigitalHumans();
-        var humanIdx = updatedHumans.findIndex(function(h) { return h.id === id; });
-        
-        if (humanIdx !== -1) {
-          updatedHumans[humanIdx].status = 'ready';
-          saveDigitalHumans(updatedHumans);
-        }
-        
-        var updatedVideos = getGeneratedVideos();
-        updatedVideos.forEach(function(v) {
-          if (v.digitalHumanId === id) {
-            v.status = 'ready';
-            v.duration = '00:' + (15 + Math.floor(Math.random() * 30)).toString().padStart(2, '0');
-          }
-        });
-        saveGeneratedVideos(updatedVideos);
-        
-        // 如果当前在列表页，刷新显示
-        if (window.location.href.includes('digital-human-list')) {
-          renderDigitalHumanList(pageConfig['digital-human-list']);
-        }
-      }, 3000);
-      
-      renderDigitalHumanList(pageConfig['digital-human-list']);
-    }
-    
-    function deleteDigitalHuman(id) {
-      if (confirm('确定要删除这个数字人吗？\n\n注意：相关的生成视频也会被删除。')) {
-        // 删除数字人
-        var humans = getDigitalHumans();
-        var filtered = humans.filter(function(h) { return h.id !== id; });
-        saveDigitalHumans(filtered);
-        
-        // 同时删除相关的视频
-        var videos = getGeneratedVideos();
-        var filteredVideos = videos.filter(function(v) { return v.digitalHumanId !== id; });
-        saveGeneratedVideos(filteredVideos);
-        
-        renderDigitalHumanList(pageConfig['digital-human-list']);
-      }
-    }
-    
-    // 渲染商品讲解页面
-    function renderDigitalHumanProduct(config) {
-      const humans = getDigitalHumans().filter(h => h.status === 'ready');
-      const urlParams = new URLSearchParams(window.location.search);
-      const preselectedDhId = urlParams.get('dhId');
-      
-      document.getElementById('contentArea').innerHTML = `
-        <div class="page-header">
-          <div class="page-title">
-            <div class="page-title-icon ${config.iconColor}">${config.icon}</div>
-            ${config.title}
-          </div>
-          <div class="page-desc">${config.desc}</div>
-        </div>
-        
-        <div class="dh-product-container">
-          <div class="dh-product-left">
-            <h3 class="dh-section-title">👤 选择数字人</h3>
-            ${humans.length === 0 ? `
-              <div class="dh-empty-mini">
-                <p>暂无可用数字人</p>
-                <a href="page.html?page=digital-human-create">去创建</a>
-              </div>
-            ` : `
-              <div class="dh-select-list">
-                ${humans.map(h => `
-                  <div class="dh-select-item ${preselectedDhId === h.id ? 'selected' : ''}" 
-                       data-dh-id="${h.id}" onclick="selectDigitalHumanForProduct('${h.id}')">
-                    <span class="dh-select-avatar">👤</span>
-                    <span class="dh-select-name">${h.name}</span>
-                  </div>
-                `).join('')}
-              </div>
-            `}
-            
-            <h3 class="dh-section-title" style="margin-top: 24px;">🛒 上传商品</h3>
-            <div class="dh-product-upload" onclick="document.getElementById('productImageInput').click()">
-              <input type="file" id="productImageInput" accept="image/*" onchange="handleProductImageUpload(this)" style="display: none;">
-              <div id="productImagePreview" class="dh-product-preview">
-                <div class="dh-upload-icon">📦</div>
-                <div>点击上传商品图片</div>
-              </div>
-            </div>
-            
-            <div class="dh-form-group" style="margin-top: 16px;">
-              <label class="dh-form-label">商品名称</label>
-              <input type="text" class="dh-form-input" id="productName" placeholder="输入商品名称">
-            </div>
-            
-            <div class="dh-form-group">
-              <label class="dh-form-label">商品描述 / 讲解要点</label>
-              <textarea class="dh-form-textarea" id="productDesc" placeholder="输入商品卖点、特色功能等，AI将据此生成讲解文案"></textarea>
-            </div>
-          </div>
-          
-          <div class="dh-product-right">
-            <h3 class="dh-section-title">👁️ 预览效果</h3>
-            <div class="dh-preview-area">
-              <div class="dh-preview-placeholder">
-                <div style="font-size: 4rem;">👤</div>
-                <p>选择数字人和商品后<br>预览效果将在此显示</p>
-              </div>
-            </div>
-            
-            <div class="dh-generate-actions">
-              <button class="dh-btn secondary" onclick="generateProductScript()">
-                📝 生成讲解文案
-              </button>
-              <button class="dh-btn primary generate" onclick="generateProductVideo()">
-                🎬 生成讲解视频
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      if (preselectedDhId) {
-        selectedDhIdForProduct = preselectedDhId;
-      }
-    }
-    
-    let selectedDhIdForProduct = null;
-    let productImageFile = null;
-    
-    function selectDigitalHumanForProduct(dhId) {
-      selectedDhIdForProduct = dhId;
-      document.querySelectorAll('.dh-select-item').forEach(item => {
-        item.classList.toggle('selected', item.dataset.dhId === dhId);
-      });
-    }
-    
-    function handleProductImageUpload(input) {
-      const file = input.files[0];
-      if (file) {
-        productImageFile = file;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          document.getElementById('productImagePreview').innerHTML = `
-            <img src="${e.target.result}" style="max-width: 100%; max-height: 200px; border-radius: 8px;">
-          `;
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-    
-    function generateProductScript() {
-      const productName = document.getElementById('productName').value.trim();
-      const productDesc = document.getElementById('productDesc').value.trim();
-      
-      if (!productName) {
-        alert('请输入商品名称');
-        return;
-      }
-      
-      alert('📝 正在使用AI生成讲解文案...\n\n功能开发中，即将支持：\n• 自动生成商品卖点\n• 多种风格文案\n• 一键复制');
-    }
-    
-    function generateProductVideo() {
-      if (!selectedDhIdForProduct) {
-        alert('请先选择一个数字人');
-        return;
-      }
-      
-      var productName = document.getElementById('productName').value.trim();
-      var productDesc = document.getElementById('productDesc').value.trim();
-      
-      if (!productName) {
-        alert('请输入商品名称');
-        return;
-      }
-      
-      // 获取数字人信息
-      var humans = getDigitalHumans();
-      var digitalHuman = humans.find(function(h) { return h.id === selectedDhIdForProduct; });
-      var greeting = digitalHuman && digitalHuman.persona ? digitalHuman.persona.greeting : '大家好！';
-      
-      // 生成商品讲解文案
-      var scriptContent = `${greeting}
-
-今天给大家介绍一款超棒的产品——${productName}！
-
-${productDesc ? productDesc + '\n\n' : ''}这款产品有以下几大亮点：
-• 品质卓越，值得信赖
-• 性价比超高，物超所值
-• 深受用户好评
-
-喜欢的朋友们不要错过哦！现在下单还有优惠！`;
-      
-      // 创建视频记录
-      var video = {
-        id: 'video_' + Date.now(),
-        type: 'product',
-        title: '商品讲解 - ' + productName,
-        status: 'processing',
-        duration: '--:--',
-        createDate: new Date().toISOString(),
-        digitalHumanId: selectedDhIdForProduct,
-        productName: productName,
-        productDesc: productDesc,
-        scriptContent: scriptContent  // 保存讲解文案供播放时使用
-      };
-      
-      // 添加到视频列表
-      addGeneratedVideo(video);
-      
-      // 模拟3秒后完成处理
-      setTimeout(function() {
-        var videos = getGeneratedVideos();
-        var idx = videos.findIndex(function(v) { return v.id === video.id; });
-        if (idx !== -1) {
-          videos[idx].status = 'ready';
-          videos[idx].duration = '01:' + Math.floor(Math.random() * 60).toString().padStart(2, '0');
-          saveGeneratedVideos(videos);
-        }
-      }, 3000);
-      
-      alert('🎬 视频生成任务已提交！\n\n系统正在生成数字人商品讲解视频，预计需要 3-5 分钟。\n完成后将在"生成视频"页面中显示。');
-      
-      window.location.href = 'page.html?page=digital-human-video';
-    }
-    
-    // 渲染文案朗读页面
-    function renderDigitalHumanScript(config) {
-      const humans = getDigitalHumans().filter(h => h.status === 'ready');
-      
-      document.getElementById('contentArea').innerHTML = `
-        <div class="page-header">
-          <div class="page-title">
-            <div class="page-title-icon ${config.iconColor}">${config.icon}</div>
-            ${config.title}
-          </div>
-          <div class="page-desc">${config.desc}</div>
-        </div>
-        
-        <div class="dh-script-container">
-          <div class="dh-script-left">
-            <h3 class="dh-section-title">👤 选择数字人</h3>
-            ${humans.length === 0 ? `
-              <div class="dh-empty-mini">
-                <p>暂无可用数字人</p>
-                <a href="page.html?page=digital-human-create">去创建</a>
-              </div>
-            ` : `
-              <div class="dh-select-list">
-                ${humans.map(h => `
-                  <div class="dh-select-item" data-dh-id="${h.id}" onclick="selectDigitalHumanForScript('${h.id}')">
-                    <span class="dh-select-avatar">👤</span>
-                    <span class="dh-select-name">${h.name}</span>
-                  </div>
-                `).join('')}
-              </div>
-            `}
-            
-            <h3 class="dh-section-title" style="margin-top: 24px;">📝 输入文案</h3>
-            <textarea class="dh-script-textarea" id="scriptContent" placeholder="输入您希望数字人朗读的文案内容...&#10;&#10;支持多段落，每段会自动处理停顿和语气。"></textarea>
-            
-            <div class="dh-script-options">
-              <div class="dh-form-group">
-                <label class="dh-form-label">语速</label>
-                <select class="dh-form-select" id="scriptSpeed">
-                  <option value="slow">慢速</option>
-                  <option value="normal" selected>正常</option>
-                  <option value="fast">快速</option>
-                </select>
-              </div>
-              <div class="dh-form-group">
-                <label class="dh-form-label">情感</label>
-                <select class="dh-form-select" id="scriptEmotion">
-                  <option value="neutral">平静</option>
-                  <option value="happy" selected>愉悦</option>
-                  <option value="serious">严肃</option>
-                  <option value="excited">激动</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          <div class="dh-script-right">
-            <h3 class="dh-section-title">👁️ 预览</h3>
-            <div class="dh-preview-area">
-              <div class="dh-preview-placeholder">
-                <div style="font-size: 4rem;">🎤</div>
-                <p>数字人将朗读您的文案<br>视频预览将在此显示</p>
-              </div>
-            </div>
-            
-            <div class="dh-generate-actions">
-              <button class="dh-btn secondary" onclick="previewScript()">
-                🔊 试听文案
-              </button>
-              <button class="dh-btn primary generate" onclick="generateScriptVideo()">
-                🎬 生成朗读视频
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-    
-    let selectedDhIdForScript = null;
-    
-    function selectDigitalHumanForScript(dhId) {
-      selectedDhIdForScript = dhId;
-      document.querySelectorAll('.dh-select-item').forEach(item => {
-        item.classList.toggle('selected', item.dataset.dhId === dhId);
-      });
-    }
-    
-    // 预览语音实例
-    var previewUtterance = null;
-    var isPreviewPlaying = false;
-    
-    function previewScript() {
-      const content = document.getElementById('scriptContent').value.trim();
-      if (!content) {
-        alert('请先输入文案内容');
-        return;
-      }
-      
-      // 检查浏览器是否支持语音合成
-      if (!('speechSynthesis' in window)) {
-        alert('您的浏览器不支持语音合成功能');
-        return;
-      }
-      
-      // 如果正在播放，则停止
-      if (isPreviewPlaying) {
-        window.speechSynthesis.cancel();
-        isPreviewPlaying = false;
-        updatePreviewButton(false);
-        return;
-      }
-      
-      // 获取语速和情感设置
-      var speed = document.getElementById('scriptSpeed').value;
-      var emotion = document.getElementById('scriptEmotion').value;
-      
-      var rateMap = { slow: 0.8, normal: 1.0, fast: 1.2 };
-      var pitchMap = { neutral: 1.0, happy: 1.1, serious: 0.9, excited: 1.2 };
-      
-      // 创建语音实例
-      previewUtterance = new SpeechSynthesisUtterance(content);
-      previewUtterance.lang = 'zh-CN';
-      previewUtterance.rate = rateMap[speed] || 1.0;
-      previewUtterance.pitch = pitchMap[emotion] || 1.0;
-      previewUtterance.volume = 1.0;
-      
-      // 尝试选择中文语音
-      var voices = window.speechSynthesis.getVoices();
-      var chineseVoice = voices.find(function(v) { 
-        return v.lang.includes('zh') || v.lang.includes('CN'); 
-      });
-      if (chineseVoice) {
-        previewUtterance.voice = chineseVoice;
-      }
-      
-      // 语音结束事件
-      previewUtterance.onend = function() {
-        isPreviewPlaying = false;
-        updatePreviewButton(false);
-      };
-      
-      previewUtterance.onerror = function() {
-        isPreviewPlaying = false;
-        updatePreviewButton(false);
-      };
-      
-      // 开始朗读
-      window.speechSynthesis.speak(previewUtterance);
-      isPreviewPlaying = true;
-      updatePreviewButton(true);
-    }
-    
-    function updatePreviewButton(isPlaying) {
-      var buttons = document.querySelectorAll('.dh-btn.secondary');
-      buttons.forEach(function(btn) {
-        if (btn.textContent.includes('试听') || btn.textContent.includes('停止')) {
-          btn.innerHTML = isPlaying ? '⏹ 停止试听' : '🔊 试听文案';
-        }
-      });
-    }
-    
-    function generateScriptVideo() {
-      if (!selectedDhIdForScript) {
-        alert('请先选择一个数字人');
-        return;
-      }
-      
-      var content = document.getElementById('scriptContent').value.trim();
-      if (!content) {
-        alert('请输入文案内容');
-        return;
-      }
-      
-      // 截取文案前20个字作为标题
-      var titlePreview = content.length > 20 ? content.substring(0, 20) + '...' : content;
-      
-      // 创建视频记录
-      var video = {
-        id: 'video_' + Date.now(),
-        type: 'script',
-        title: '文案朗读 - ' + titlePreview,
-        status: 'processing',
-        duration: '--:--',
-        createDate: new Date().toISOString(),
-        digitalHumanId: selectedDhIdForScript,
-        scriptContent: content  // 保存文案内容供播放时使用
-      };
-      
-      // 添加到视频列表
-      addGeneratedVideo(video);
-      
-      // 模拟3秒后完成处理
-      setTimeout(function() {
-        var videos = getGeneratedVideos();
-        var idx = videos.findIndex(function(v) { return v.id === video.id; });
-        if (idx !== -1) {
-          videos[idx].status = 'ready';
-          videos[idx].duration = '00:' + (30 + Math.floor(Math.random() * 90)).toString().padStart(2, '0');
-          saveGeneratedVideos(videos);
-        }
-      }, 3000);
-      
-      alert('🎬 视频生成任务已提交！\n\n系统正在生成数字人朗读视频，预计需要 2-4 分钟。\n完成后将在"生成视频"页面中显示。');
-      
-      window.location.href = 'page.html?page=digital-human-video';
-    }
-    
-    // 渲染生成视频页面
-    // 获取生成的视频列表
-    function getGeneratedVideos() {
-      return JSON.parse(localStorage.getItem('generatedVideos') || '[]');
-    }
-    
-    // 保存生成的视频列表
-    function saveGeneratedVideos(videos) {
-      localStorage.setItem('generatedVideos', JSON.stringify(videos));
-    }
-    
-    // 添加生成的视频
-    function addGeneratedVideo(video) {
-      const videos = getGeneratedVideos();
-      videos.unshift(video);
-      saveGeneratedVideos(videos);
-    }
-    
-    function renderDigitalHumanVideo(config) {
-      // 首先检查并更新超时的任务
-      checkAndUpdateTimeoutDigitalHumans();
-      
-      // 从 localStorage 读取视频
-      const videos = getGeneratedVideos();
-      
-      // 渲染视频卡片
-      function renderVideoCards(videoList) {
-        if (videoList.length === 0) {
-          return '';
-        }
-        return videoList.map(function(v) {
-          var typeLabel = v.type === 'product' ? '🛒 商品讲解' : v.type === 'script' ? '📖 文案朗读' : '👤 数字人';
-          var statusHtml = '';
-          var actionsHtml = '';
-          var cardClass = '';
-          
-          if (v.status === 'processing') {
-            // 计算等待时间
-            var createTime = new Date(v.createDate).getTime();
-            var elapsedSeconds = Math.floor((Date.now() - createTime) / 1000);
-            var timeInfo = elapsedSeconds < 60 ? elapsedSeconds + '秒' : Math.floor(elapsedSeconds / 60) + '分钟';
-            statusHtml = '<div class="dh-video-processing">⏳ 处理中（' + timeInfo + '）</div>';
-            actionsHtml = '<button class="dh-action-btn" onclick="location.reload()">刷新状态</button>';
-          } else if (v.status === 'failed') {
-            statusHtml = '<div class="dh-video-failed">❌ ' + (v.error || '生成失败') + '</div>';
-            cardClass = ' failed';
-            actionsHtml = '<button class="dh-action-btn primary" onclick="retryGeneratedVideo(\'' + v.id + '\')">重试</button>';
-          } else if (v.status === 'ready') {
-            actionsHtml = '<button class="dh-action-btn" onclick="playVideo(\'' + v.id + '\')">播放</button>' +
-              '<button class="dh-action-btn" onclick="downloadVideo(\'' + v.id + '\')">下载</button>';
-          }
-          
-          return '<div class="dh-video-card' + cardClass + '" data-type="' + v.type + '">' +
-            '<div class="dh-video-thumbnail">' +
-              '<div class="dh-video-play">▶</div>' +
-              '<div class="dh-video-duration">' + (v.duration || '--:--') + '</div>' +
-              statusHtml +
-            '</div>' +
-            '<div class="dh-video-info">' +
-              '<div class="dh-video-title">' + v.title + '</div>' +
-              '<div class="dh-video-meta">' +
-                '<span class="dh-video-type">' + typeLabel + '</span>' +
-                '<span>' + formatDate(v.createDate) + '</span>' +
-              '</div>' +
-            '</div>' +
-            '<div class="dh-video-actions">' +
-              actionsHtml +
-              '<button class="dh-action-btn danger" onclick="deleteGeneratedVideo(\'' + v.id + '\')">删除</button>' +
-            '</div>' +
-          '</div>';
-        }).join('');
-      }
-      
-      var emptyHtml = videos.length === 0 ? 
-        '<div class="empty-state">' +
-          '<div class="empty-state-icon">🎬</div>' +
-          '<div class="empty-state-title">暂无生成的视频</div>' +
-          '<div class="empty-state-desc">去商品讲解或文案朗读页面生成视频吧</div>' +
-          '<div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">' +
-            '<button class="dh-btn primary" onclick="window.location.href=\'page.html?page=digital-human-product\'">商品讲解</button>' +
-            '<button class="dh-btn secondary" onclick="window.location.href=\'page.html?page=digital-human-script\'">文案朗读</button>' +
-          '</div>' +
-        '</div>' : '';
-      
-      document.getElementById('contentArea').innerHTML = 
-        '<div class="page-header">' +
-          '<div class="page-title">' +
-            '<div class="page-title-icon ' + config.iconColor + '">' + config.icon + '</div>' +
-            config.title +
-          '</div>' +
-          '<div class="page-desc">' + config.desc + '</div>' +
-        '</div>' +
-        
-        '<div class="dh-video-tabs">' +
-          '<button class="dh-video-tab active" onclick="filterVideos(\'all\', this)">全部 (' + videos.length + ')</button>' +
-          '<button class="dh-video-tab" onclick="filterVideos(\'product\', this)">商品讲解</button>' +
-          '<button class="dh-video-tab" onclick="filterVideos(\'script\', this)">文案朗读</button>' +
-          '<button class="dh-video-tab" onclick="filterVideos(\'digital-human\', this)">数字人</button>' +
-        '</div>' +
-        
-        '<div class="dh-video-grid" id="videoGrid">' +
-          renderVideoCards(videos) +
-        '</div>' +
-        
-        emptyHtml;
-    }
-    
-    // 删除生成的视频
-    function deleteGeneratedVideo(videoId) {
-      var videos = getGeneratedVideos();
-      var video = videos.find(function(v) { return v.id === videoId; });
-      
-      if (!video) return;
-      
-      // 如果是数字人生成视频，询问是否同时删除数字人
-      if (video.type === 'digital-human' && video.digitalHumanId) {
-        var deleteHuman = confirm('确定要删除这个视频吗？\n\n这是数字人生成记录，是否同时删除对应的数字人？\n\n点击"确定"同时删除数字人\n点击"取消"仅删除视频记录');
-        
-        if (deleteHuman) {
-          // 删除数字人
-          var humans = getDigitalHumans();
-          humans = humans.filter(function(h) { return h.id !== video.digitalHumanId; });
-          saveDigitalHumans(humans);
-        }
-      } else {
-        if (!confirm('确定要删除这个视频吗？')) {
-          return;
-        }
-      }
-      
-      // 删除视频
-      videos = videos.filter(function(v) { return v.id !== videoId; });
-      saveGeneratedVideos(videos);
-      renderDigitalHumanVideo(pageConfig['digital-human-video']);
-    }
-    
-    // 旧的删除函数保持兼容
-    function deleteVideo(id) {
-      deleteGeneratedVideo(id);
-    }
-    
-    
-    function filterVideos(type, btn) {
-      document.querySelectorAll('.dh-video-tab').forEach(t => t.classList.remove('active'));
-      btn.classList.add('active');
-      
-      document.querySelectorAll('.dh-video-card').forEach(card => {
-        if (type === 'all' || card.dataset.type === type) {
-          card.style.display = 'block';
-        } else {
-          card.style.display = 'none';
-        }
-      });
-    }
-    
-    function playVideo(id) {
-      var videos = getGeneratedVideos();
-      var video = videos.find(function(v) { return v.id === id; });
-      
-      if (!video) {
-        alert('视频不存在');
-        return;
-      }
-      
-      // 获取关联的数字人信息
-      var digitalHuman = null;
-      if (video.digitalHumanId) {
-        var humans = getDigitalHumans();
-        digitalHuman = humans.find(function(h) { return h.id === video.digitalHumanId; });
-      }
-      
-      var typeLabel = video.type === 'product' ? '🛒 商品讲解' : video.type === 'script' ? '📖 文案朗读' : '👤 数字人';
-      var dhName = digitalHuman ? digitalHuman.name : '未知数字人';
-      
-      // 创建视频播放器弹窗
-      var modal = document.createElement('div');
-      modal.id = 'videoPlayerModal';
-      modal.innerHTML = `
-        <div class="video-player-overlay" onclick="closeVideoPlayer()">
-          <div class="video-player-container" onclick="event.stopPropagation()">
-            <div class="video-player-header">
-              <div class="video-player-title">${video.title}</div>
-              <button class="video-player-close" onclick="closeVideoPlayer()">×</button>
-            </div>
-            
-            <div class="video-player-content">
-              <div class="video-player-screen" id="videoScreen">
-                <!-- 视频演示区域 -->
-                <div class="video-demo-wrapper">
-                  <div class="video-demo-avatar">
-                    <div class="avatar-circle">
-                      ${digitalHuman && digitalHuman.aiGenerated ? '🤖' : '👤'}
-                    </div>
-                    <div class="sound-waves">
-                      <div class="sound-wave"></div>
-                      <div class="sound-wave"></div>
-                      <div class="sound-wave"></div>
-                      <div class="sound-wave"></div>
-                      <div class="sound-wave"></div>
-                    </div>
-                    <div class="avatar-name">${dhName}</div>
-                  </div>
-                  <div class="video-demo-content">
-                    <div class="demo-text" id="demoText">
-                      ${getDemoScript(video, digitalHuman)}
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- 播放状态覆盖层 -->
-                <div class="video-play-overlay" id="playOverlay" onclick="toggleVideoPlay()">
-                  <div class="play-button" id="playButton">▶</div>
-                </div>
-              </div>
-              
-              <!-- 播放器控制条 -->
-              <div class="video-player-controls">
-                <button class="control-btn" id="playPauseBtn" onclick="toggleVideoPlay()">▶</button>
-                <div class="progress-container">
-                  <div class="progress-bar" id="progressBar">
-                    <div class="progress-filled" id="progressFilled" style="width: 0%"></div>
-                  </div>
-                  <div class="time-display">
-                    <span id="currentTime">00:00</span> / <span id="totalTime">${video.duration || '00:30'}</span>
-                  </div>
-                </div>
-                <div class="volume-container">
-                  <button class="control-btn volume-btn" onclick="toggleMute()">🔊</button>
-                  <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80">
-                </div>
-                <button class="control-btn fullscreen-btn" onclick="toggleFullscreen()">⛶</button>
-              </div>
-            </div>
-            
-            <div class="video-player-info">
-              <div class="video-info-row">
-                <span class="video-info-label">类型:</span>
-                <span class="video-info-value">${typeLabel}</span>
-              </div>
-              <div class="video-info-row">
-                <span class="video-info-label">时长:</span>
-                <span class="video-info-value">${video.duration || '--:--'}</span>
-              </div>
-              <div class="video-info-row">
-                <span class="video-info-label">数字人:</span>
-                <span class="video-info-value">${dhName}</span>
-              </div>
-              <div class="video-info-row">
-                <span class="video-info-label">创建时间:</span>
-                <span class="video-info-value">${formatDate(video.createDate)}</span>
-              </div>
-              ${video.productName ? `<div class="video-info-row"><span class="video-info-label">商品:</span><span class="video-info-value">${video.productName}</span></div>` : ''}
-            </div>
-            
-            <div class="video-player-actions">
-              <button class="dh-btn" onclick="closeVideoPlayer()">关闭</button>
-              <button class="dh-btn primary" onclick="downloadVideo('${id}')">📥 下载视频</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-      
-      // 初始化播放器
-      initVideoPlayer(video);
-    }
-    
-    // 获取演示文稿
-    function getDemoScript(video, digitalHuman) {
-      if (video.scriptContent) {
-        return video.scriptContent;
-      }
-      
-      var greeting = digitalHuman && digitalHuman.persona ? digitalHuman.persona.greeting : '你好！';
-      
-      if (video.type === 'product') {
-        return `${greeting}\n\n今天给大家介绍一款非常棒的产品——${video.productName || '精选好物'}！\n\n这款产品拥有以下特点：\n• 品质优秀，值得信赖\n• 性价比超高\n• 深受用户喜爱\n\n感兴趣的朋友不要错过哦！`;
-      } else if (video.type === 'script') {
-        return video.scriptContent || `${greeting}\n\n感谢您的关注！\n\n今天我想和大家分享一些有趣的内容...\n\n希望对您有所帮助！`;
-      } else {
-        return `${greeting}\n\n我是您的AI数字人助手，很高兴为您服务！\n\n有任何问题都可以随时问我。`;
-      }
-    }
-    
-    // 播放器状态
-    var videoPlayerState = {
-      isPlaying: false,
-      currentTime: 0,
-      duration: 30,
-      volume: 80,
-      isMuted: false,
-      animationId: null,
-      textInterval: null,
-      speechSynthesis: null,
-      utterance: null,
-      fullText: '',
-      currentCharIndex: 0
-    };
-    
-    // 初始化视频播放器
-    function initVideoPlayer(video) {
-      // 解析时长
-      if (video.duration && video.duration !== '--:--') {
-        var parts = video.duration.split(':');
-        videoPlayerState.duration = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-      } else {
-        videoPlayerState.duration = 30;
-      }
-      
-      videoPlayerState.isPlaying = false;
-      videoPlayerState.currentTime = 0;
-      videoPlayerState.currentCharIndex = 0;
-      
-      // 获取要朗读的文本
-      var demoText = document.getElementById('demoText');
-      if (demoText) {
-        videoPlayerState.fullText = demoText.textContent.trim();
-      }
-      
-      // 检查浏览器是否支持语音合成
-      if (!('speechSynthesis' in window)) {
-        alert('您的浏览器不支持语音合成功能，将以静音模式播放。');
-      }
-      
-      updateTimeDisplay();
-      
-      // 初始化音量滑块事件
-      var volumeSlider = document.getElementById('volumeSlider');
-      if (volumeSlider) {
-        volumeSlider.addEventListener('input', function() {
-          videoPlayerState.volume = parseInt(this.value);
-          videoPlayerState.isMuted = this.value == 0;
-          updateVolumeIcon();
-        });
-      }
-    }
-    
-    // 切换播放/暂停
-    function toggleVideoPlay() {
-      if (videoPlayerState.isPlaying) {
-        pausePlayback();
-      } else {
-        startPlayback();
-      }
-    }
-    
-    // 开始播放
-    function startPlayback() {
-      videoPlayerState.isPlaying = true;
-      updatePlayButtons(true);
-      
-      // 开始语音合成
-      startSpeech();
-      
-      // 开始进度更新
-      startProgressUpdate();
-    }
-    
-    // 暂停播放
-    function pausePlayback() {
-      videoPlayerState.isPlaying = false;
-      updatePlayButtons(false);
-      
-      // 暂停语音
-      if (window.speechSynthesis) {
-        window.speechSynthesis.pause();
-      }
-      
-      // 停止进度更新
-      if (videoPlayerState.animationId) {
-        cancelAnimationFrame(videoPlayerState.animationId);
-      }
-    }
-    
-    // 停止播放
-    function stopPlayback() {
-      videoPlayerState.isPlaying = false;
-      updatePlayButtons(false);
-      
-      // 停止语音
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-      
-      // 停止进度更新
-      if (videoPlayerState.animationId) {
-        cancelAnimationFrame(videoPlayerState.animationId);
-      }
-      if (videoPlayerState.textInterval) {
-        clearInterval(videoPlayerState.textInterval);
-      }
-      
-      videoPlayerState.currentTime = 0;
-      videoPlayerState.currentCharIndex = 0;
-    }
-    
-    // 更新播放按钮状态
-    function updatePlayButtons(isPlaying) {
-      var playPauseBtn = document.getElementById('playPauseBtn');
-      var playButton = document.getElementById('playButton');
-      var playOverlay = document.getElementById('playOverlay');
-      
-      if (isPlaying) {
-        if (playPauseBtn) playPauseBtn.textContent = '⏸';
-        if (playButton) playButton.textContent = '⏸';
-        if (playOverlay) playOverlay.classList.add('playing');
-      } else {
-        if (playPauseBtn) playPauseBtn.textContent = '▶';
-        if (playButton) playButton.textContent = '▶';
-        if (playOverlay) playOverlay.classList.remove('playing');
-      }
-    }
-    
-    // 开始语音合成
-    function startSpeech() {
-      if (!('speechSynthesis' in window)) return;
-      
-      // 如果有正在播放的，先取消
-      window.speechSynthesis.cancel();
-      
-      // 获取剩余要朗读的文本
-      var textToSpeak = videoPlayerState.fullText.substring(videoPlayerState.currentCharIndex);
-      if (!textToSpeak) {
-        onSpeechEnd();
-        return;
-      }
-      
-      var utterance = new SpeechSynthesisUtterance(textToSpeak);
-      videoPlayerState.utterance = utterance;
-      
-      // 设置语音参数
-      utterance.lang = 'zh-CN';  // 中文
-      utterance.rate = 1.0;      // 语速
-      utterance.pitch = 1.0;     // 音调
-      utterance.volume = videoPlayerState.isMuted ? 0 : videoPlayerState.volume / 100;
-      
-      // 尝试选择中文语音
-      var voices = window.speechSynthesis.getVoices();
-      var chineseVoice = voices.find(function(v) { 
-        return v.lang.includes('zh') || v.lang.includes('CN'); 
-      });
-      if (chineseVoice) {
-        utterance.voice = chineseVoice;
-      }
-      
-      // 语音边界事件 - 用于同步文字高亮
-      utterance.onboundary = function(event) {
-        if (event.name === 'word' || event.name === 'sentence') {
-          videoPlayerState.currentCharIndex = event.charIndex;
-          highlightCurrentText();
-        }
-      };
-      
-      // 语音结束事件
-      utterance.onend = function() {
-        onSpeechEnd();
-      };
-      
-      // 语音错误事件
-      utterance.onerror = function(event) {
-        console.error('语音合成错误:', event.error);
-        if (event.error !== 'interrupted') {
-          onSpeechEnd();
-        }
-      };
-      
-      // 开始朗读
-      window.speechSynthesis.speak(utterance);
-      
-      // 开始文字高亮动画
-      startTextHighlight();
-    }
-    
-    // 语音结束处理
-    function onSpeechEnd() {
-      videoPlayerState.isPlaying = false;
-      videoPlayerState.currentTime = videoPlayerState.duration;
-      videoPlayerState.currentCharIndex = 0;
-      updatePlayButtons(false);
-      updateTimeDisplay();
-      
-      // 重置文字显示
-      var demoText = document.getElementById('demoText');
-      if (demoText) {
-        demoText.innerHTML = videoPlayerState.fullText;
-      }
-    }
-    
-    // 开始进度更新
-    function startProgressUpdate() {
-      var startTime = Date.now() - (videoPlayerState.currentTime * 1000);
-      
-      function update() {
-        if (!videoPlayerState.isPlaying) return;
-        
-        var elapsed = (Date.now() - startTime) / 1000;
-        videoPlayerState.currentTime = Math.min(elapsed, videoPlayerState.duration);
-        
-        updateTimeDisplay();
-        
-        if (videoPlayerState.currentTime < videoPlayerState.duration) {
-          videoPlayerState.animationId = requestAnimationFrame(update);
-        }
-      }
-      
-      videoPlayerState.animationId = requestAnimationFrame(update);
-    }
-    
-    // 开始文字高亮
-    function startTextHighlight() {
-      var demoText = document.getElementById('demoText');
-      if (!demoText) return;
-      
-      // 定期更新高亮位置
-      videoPlayerState.textInterval = setInterval(function() {
-        if (!videoPlayerState.isPlaying) return;
-        highlightCurrentText();
-      }, 100);
-    }
-    
-    // 高亮当前朗读的文字
-    function highlightCurrentText() {
-      var demoText = document.getElementById('demoText');
-      if (!demoText) return;
-      
-      var fullText = videoPlayerState.fullText;
-      var charIndex = videoPlayerState.currentCharIndex;
-      
-      // 估算当前位置（基于时间）
-      if (charIndex === 0 && videoPlayerState.currentTime > 0) {
-        var progress = videoPlayerState.currentTime / videoPlayerState.duration;
-        charIndex = Math.floor(progress * fullText.length);
-      }
-      
-      // 创建高亮HTML
-      var spokenText = fullText.substring(0, charIndex);
-      var currentWord = fullText.substring(charIndex, charIndex + 5);
-      var remainingText = fullText.substring(charIndex + 5);
-      
-      demoText.innerHTML = 
-        '<span style="color: rgba(255,255,255,0.5);">' + escapeHtml(spokenText) + '</span>' +
-        '<span style="color: #fff; background: rgba(24,144,255,0.3); padding: 2px 4px; border-radius: 4px;">' + escapeHtml(currentWord) + '</span>' +
-        '<span style="color: #fff;">' + escapeHtml(remainingText) + '</span>';
-    }
-    
-    // HTML转义
-    function escapeHtml(text) {
-      var div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-    
-    // 更新时间显示
-    function updateTimeDisplay() {
-      var currentTimeEl = document.getElementById('currentTime');
-      var progressFilled = document.getElementById('progressFilled');
-      var totalTimeEl = document.getElementById('totalTime');
-      
-      if (currentTimeEl) {
-        var mins = Math.floor(videoPlayerState.currentTime / 60);
-        var secs = Math.floor(videoPlayerState.currentTime % 60);
-        currentTimeEl.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
-      }
-      
-      if (progressFilled) {
-        var progress = (videoPlayerState.currentTime / videoPlayerState.duration) * 100;
-        progressFilled.style.width = Math.min(progress, 100) + '%';
-      }
-    }
-    
-    // 更新音量图标
-    function updateVolumeIcon() {
-      var volumeBtn = document.querySelector('.volume-btn');
-      if (volumeBtn) {
-        volumeBtn.textContent = videoPlayerState.isMuted || videoPlayerState.volume === 0 ? '🔇' : '🔊';
-      }
-      
-      // 更新语音音量
-      if (videoPlayerState.utterance) {
-        videoPlayerState.utterance.volume = videoPlayerState.isMuted ? 0 : videoPlayerState.volume / 100;
-      }
-    }
-    
-    // 切换静音
-    function toggleMute() {
-      videoPlayerState.isMuted = !videoPlayerState.isMuted;
-      var volumeSlider = document.getElementById('volumeSlider');
-      
-      if (videoPlayerState.isMuted) {
-        volumeSlider.value = 0;
-      } else {
-        volumeSlider.value = videoPlayerState.volume;
-      }
-      
-      updateVolumeIcon();
-      
-      // 如果正在播放，需要重新开始语音以应用新音量
-      if (videoPlayerState.isPlaying && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        startSpeech();
-      }
-    }
-    
-    // 切换全屏
-    function toggleFullscreen() {
-      var container = document.querySelector('.video-player-container');
-      if (!container) return;
-      
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        container.requestFullscreen();
-      }
-    }
-    
-    // 关闭视频播放器
-    function closeVideoPlayer() {
-      stopPlayback();
-      var modal = document.getElementById('videoPlayerModal');
-      if (modal) modal.remove();
-    }
-    
-    // 确保语音列表加载完成
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.onvoiceschanged = function() {
-        // 语音列表已加载
-      };
-    }
-
-    function downloadVideo(id) {
-      var videos = getGeneratedVideos();
-      var video = videos.find(function(v) { return v.id === id; });
-      
-      if (!video) {
-        alert('视频不存在');
-        return;
-      }
-      
-      // 模拟下载
-      alert('📥 开始下载视频\n\n文件名: ' + video.title + '.mp4\n时长: ' + (video.duration || '--:--') + '\n\n提示: 这是演示功能，实际下载需要后端支持');
-    }
-    
-    // 重试生成视频
-    function retryGeneratedVideo(videoId) {
-      var videos = getGeneratedVideos();
-      var video = videos.find(function(v) { return v.id === videoId; });
-      
-      if (!video) {
-        alert('视频不存在');
-        return;
-      }
-      
-      // 更新状态为处理中
-      video.status = 'processing';
-      video.error = null;
-      saveGeneratedVideos(videos);
-      
-      // 如果是数字人视频，同时更新数字人状态
-      if (video.digitalHumanId) {
-        var humans = getDigitalHumans();
-        var humanIdx = humans.findIndex(function(h) { return h.id === video.digitalHumanId; });
-        if (humanIdx !== -1) {
-          humans[humanIdx].status = 'processing';
-          humans[humanIdx].error = null;
-          saveDigitalHumans(humans);
-        }
-      }
-      
-      alert('🔄 重试任务已提交！');
-      
-      // 模拟重新处理
-      setTimeout(function() {
-        var updatedVideos = getGeneratedVideos();
-        var idx = updatedVideos.findIndex(function(v) { return v.id === videoId; });
-        
-        if (idx !== -1) {
-          updatedVideos[idx].status = 'ready';
-          updatedVideos[idx].duration = '00:' + (15 + Math.floor(Math.random() * 60)).toString().padStart(2, '0');
-          saveGeneratedVideos(updatedVideos);
-        }
-        
-        // 如果是数字人视频，同时更新数字人状态
-        if (video.digitalHumanId) {
-          var humans = getDigitalHumans();
-          var humanIdx = humans.findIndex(function(h) { return h.id === video.digitalHumanId; });
-          if (humanIdx !== -1) {
-            humans[humanIdx].status = 'ready';
-            saveDigitalHumans(humans);
-          }
-        }
-        
-        // 刷新页面
-        renderDigitalHumanVideo(pageConfig['digital-human-video']);
-      }, 3000);
-      
-      renderDigitalHumanVideo(pageConfig['digital-human-video']);
-    }
-    
-    function deleteVideo(id) {
-      if (confirm('确定要删除这个视频吗？')) {
-        alert('✅ 视频已删除');
-      }
-    }
   </script>
 </body>
 </html>

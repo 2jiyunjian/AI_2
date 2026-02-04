@@ -43,13 +43,14 @@
     .sidebar {
       width: 256px;
       background: var(--sidebar-bg);
-      min-height: 100vh;
+      height: 100vh;
       position: fixed;
       left: 0;
       top: 0;
       display: flex;
       flex-direction: column;
       z-index: 100;
+      overflow: hidden;           /* 禁止整个侧边栏滚动 */
     }
 
     .sidebar-header {
@@ -58,6 +59,8 @@
       align-items: center;
       gap: 12px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;             /* 防止被压缩 */
+      background: var(--sidebar-bg);
     }
 
     .logo-icon {
@@ -92,6 +95,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-shrink: 0;             /* 防止被压缩 */
     }
 
     .user-avatar {
@@ -131,7 +135,24 @@
     .nav-menu {
       flex: 1;
       padding: 8px 0;
-      overflow-y: auto;
+      overflow-y: auto;           /* 中间菜单区域可滚动 */
+      overflow-x: hidden;
+      scrollbar-width: thin;      /* Firefox 细滚动条 */
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+      -ms-overflow-style: -ms-autohiding-scrollbar;   /* IE/Edge 自动隐藏滚动条 */
+    }
+    .nav-menu::-webkit-scrollbar {
+      width: 6px;                 /* Chrome/Safari/Opera 滚动条宽度 */
+    }
+    .nav-menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .nav-menu::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+    }
+    .nav-menu::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
     }
 
     .menu-item {
@@ -209,7 +230,8 @@
     }
 
     .menu-item.open .submenu {
-      max-height: 600px;
+      /* 允许更多菜单项展开，超出由外层 nav-menu 滚动处理 */
+      max-height: 1200px;
     }
 
     .submenu-link {
@@ -256,6 +278,8 @@
     .sidebar-footer {
       padding: 16px 24px;
       border-top: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;             /* 防止被压缩 */
+      background: var(--sidebar-bg);
     }
 
     .logout-btn {
@@ -497,16 +521,7 @@
     <div class="sidebar-header">
       <div class="logo-icon">🤖</div>
       <div class="logo-text">
-        智能体管理平台
-        <span>管理后台</span>
-      </div>
-    </div>
-
-    <div class="user-info">
-      <div class="user-avatar" id="userAvatar">A</div>
-      <div class="user-details">
-        <div class="user-name" id="userName">管理员</div>
-        <div class="role-badge">系统管理员</div>
+        智能管理平台
       </div>
     </div>
 
@@ -589,6 +604,14 @@
           <span class="menu-arrow">›</span>
         </div>
         <div class="submenu">
+          <a class="submenu-link" href="#" onclick="showPage('api-keys'); return false;">
+            <span class="submenu-text">API Key 配置</span>
+            <span class="menu-tag blue">Key</span>
+          </a>
+          <a class="submenu-link" href="#" onclick="showPage('wallet'); return false;">
+            <span class="submenu-text">用户钱包管理</span>
+            <span class="menu-tag green">钱包</span>
+          </a>
           <a class="submenu-link" href="#">
             <span class="submenu-text">系统管理员</span>
           </a>
@@ -622,6 +645,8 @@
     </header>
 
     <div class="content-area">
+      <!-- 仪表盘页 -->
+      <div id="page-dashboard">
       <div class="page-header">
         <h1 class="page-title">管理后台仪表盘</h1>
         <p class="page-desc">管理所有系统中的智能体、工作流和订单</p>
@@ -695,6 +720,130 @@
           </div>
         </div>
       </div>
+      </div>
+      <!-- 用户钱包管理页 -->
+      <div id="page-wallet" style="display: none;">
+        <div class="page-header">
+          <h1 class="page-title">用户钱包管理</h1>
+          <p class="page-desc">服务端统一管理：管理员配置扣款单价，调用 API 后按单价或接口返回金额扣款，记录返回给用户</p>
+        </div>
+        <div class="content-card">
+          <div class="content-card-header">
+            <span class="content-card-title">扣款单价配置（服务端）</span>
+            <button type="button" onclick="saveWalletPricing()" style="padding: 6px 12px; background: var(--success); color: white; border: none; border-radius: 6px; cursor: pointer;">保存单价</button>
+          </div>
+          <div class="content-card-body">
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 12px;">调用国内数字人 API 成功后，按以下单价扣款；若接口返回 cost/amount/credits_used 则优先使用接口金额（上限为单价的 10 倍）。</p>
+            <div id="wallet-pricing-form" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">云雾诵读视频 (yunwu_recite)</label>
+                <input type="number" id="pricing_yunwu_recite" min="0" step="0.01" placeholder="1" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">云雾内容视频-诵读 (yunwu_content_video)</label>
+                <input type="number" id="pricing_yunwu_content_video" min="0" step="0.01" placeholder="1" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">卖货推送 (yunwu_promote)</label>
+                <input type="number" id="pricing_yunwu_promote" min="0" step="0.01" placeholder="1" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">云雾数字人创建 (yunwu_digital_human)</label>
+                <input type="number" id="pricing_yunwu_digital_human" min="0" step="0.01" placeholder="1" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">云雾图像生成 (yunwu_image)</label>
+                <input type="number" id="pricing_yunwu_image" min="0" step="0.01" placeholder="0.5" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">AI工坊-图生视频 (yunwu_image2video)</label>
+                <input type="number" id="pricing_yunwu_image2video" min="0" step="0.01" placeholder="1" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">AI工坊-文生视频 (yunwu_text2video)</label>
+                <input type="number" id="pricing_yunwu_text2video" min="0" step="0.01" placeholder="1" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">AI工坊-对口型 (yunwu_lipsync)</label>
+                <input type="number" id="pricing_yunwu_lipsync" min="0" step="0.01" placeholder="1" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">AI工坊-多图参考生图 (yunwu_multi_image2image)</label>
+                <input type="number" id="pricing_yunwu_multi_image2image" min="0" step="0.01" placeholder="0.5" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">AI工坊-多图生视频 (yunwu_multi_image2video)</label>
+                <input type="number" id="pricing_yunwu_multi_image2video" min="0" step="0.01" placeholder="1" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">AI工坊-文生音效 (yunwu_text2audio)</label>
+                <input type="number" id="pricing_yunwu_text2audio" min="0" step="0.01" placeholder="0.5" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">AI工坊-TTS (yunwu_tts)</label>
+                <input type="number" id="pricing_yunwu_tts" min="0" step="0.01" placeholder="0.5" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">AI工坊-视频生音效 (yunwu_video2audio)</label>
+                <input type="number" id="pricing_yunwu_video2audio" min="0" step="0.01" placeholder="0.5" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="content-card">
+          <div class="content-card-header">
+            <span class="content-card-title">用户钱包列表</span>
+            <button type="button" onclick="loadWalletPage()" style="padding: 6px 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">刷新</button>
+          </div>
+          <div class="content-card-body">
+            <div id="wallet-users-list">加载中...</div>
+          </div>
+        </div>
+        <div class="content-card">
+          <div class="content-card-header">
+            <span class="content-card-title">全部充值与扣款记录</span>
+            <button type="button" onclick="loadWalletPage()" style="padding: 6px 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">刷新</button>
+          </div>
+          <div class="content-card-body" style="overflow-x: auto;">
+            <div id="wallet-records-list">加载中...</div>
+          </div>
+        </div>
+      </div>
+      <!-- API Key 配置页 -->
+      <div id="page-api-keys" style="display: none;">
+        <div class="page-header">
+          <h1 class="page-title">API Key 配置</h1>
+          <p class="page-desc">设置默认 API Key；为各用户单独配置 HeyGen / 云雾 Key，未配置时使用默认 Key</p>
+        </div>
+        <div class="content-card">
+          <div class="content-card-header">
+            <span class="content-card-title">默认 API Key（所有未单独配置的用户将使用此 Key）</span>
+          </div>
+          <div class="content-card-body">
+            <div style="display: grid; gap: 16px; max-width: 640px;">
+              <div>
+                <label style="display: block; margin-bottom: 6px; font-weight: 500;">HeyGen API Key</label>
+                <input type="password" id="defaultHeyGen" placeholder="留空表示不修改" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+                <span id="defaultHeyGenMask" style="font-size: 0.85rem; color: var(--text-secondary); margin-left: 8px;"></span>
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 6px; font-weight: 500;">云雾 API Key</label>
+                <input type="password" id="defaultYunwu" placeholder="留空表示不修改" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+                <span id="defaultYunwuMask" style="font-size: 0.85rem; color: var(--text-secondary); margin-left: 8px;"></span>
+              </div>
+              <button type="button" onclick="saveDefaultApiKeys()" style="padding: 8px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">保存默认 Key</button>
+            </div>
+          </div>
+        </div>
+        <div class="content-card">
+          <div class="content-card-header">
+            <span class="content-card-title">按用户配置</span>
+          </div>
+          <div class="content-card-body">
+            <div id="api-keys-user-list">加载中...</div>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -705,8 +854,227 @@
     if (!user || user.role !== 'admin') {
       window.location.href = '/';
     } else {
-      document.getElementById('userName').textContent = user.username;
-      document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+      const userNameEl = document.getElementById('userName');
+      const userAvatarEl = document.getElementById('userAvatar');
+      if (userNameEl) userNameEl.textContent = user.username;
+      if (userAvatarEl) userAvatarEl.textContent = user.username.charAt(0).toUpperCase();
+    }
+
+    function getAuthHeaders() {
+      const token = sessionStorage.getItem('token');
+      return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') };
+    }
+
+    function showPage(pageId) {
+      document.querySelectorAll('[id^="page-"]').forEach(function(el) { el.style.display = 'none'; });
+      const el = document.getElementById('page-' + pageId);
+      if (el) { el.style.display = 'block'; }
+      if (pageId === 'api-keys') loadApiKeysConfig();
+      if (pageId === 'wallet') loadWalletPage();
+    }
+
+    async function loadApiKeysConfig() {
+      const listEl = document.getElementById('api-keys-user-list');
+      if (!listEl) return;
+      listEl.textContent = '加载中...';
+      try {
+        const res = await fetch('/api/admin/api-keys', { headers: getAuthHeaders() });
+        const data = await res.json();
+        if (!data.success) {
+          listEl.innerHTML = '<p style="color: var(--danger);">' + (data.message || '加载失败') + '</p>';
+          return;
+        }
+        document.getElementById('defaultHeyGen').value = '';
+        document.getElementById('defaultYunwu').value = '';
+        document.getElementById('defaultHeyGenMask').textContent = data.defaultMasked && data.defaultMasked.heygen ? '当前: ' + data.defaultMasked.heygen : '';
+        document.getElementById('defaultYunwuMask').textContent = data.defaultMasked && data.defaultMasked.yunwu ? '当前: ' + data.defaultMasked.yunwu : '';
+        const users = data.users || [];
+        if (users.length === 0) {
+          listEl.innerHTML = '<p style="color: var(--text-secondary);">暂无用户</p>';
+          return;
+        }
+        listEl.innerHTML = '<table style="width: 100%; border-collapse: collapse;">' +
+          '<thead><tr style="border-bottom: 1px solid var(--border-color);">' +
+          '<th style="text-align: left; padding: 12px;">用户</th><th style="text-align: left; padding: 12px;">角色</th>' +
+          '<th style="text-align: left; padding: 12px;">HeyGen Key</th><th style="text-align: left; padding: 12px;">云雾 Key</th>' +
+          '<th style="padding: 12px;">操作</th></tr></thead><tbody>' +
+          users.map(function(u) {
+            return '<tr style="border-bottom: 1px solid var(--border-color);">' +
+              '<td style="padding: 12px;">' + (u.username || '') + '</td>' +
+              '<td style="padding: 12px;">' + (u.role || 'user') + '</td>' +
+              '<td style="padding: 12px;"><input type="password" id="u' + u.id + '_heygen" placeholder="' + (u.heygenMasked || '未配置') + '" style="width: 100%; max-width: 240px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px;"></td>' +
+              '<td style="padding: 12px;"><input type="password" id="u' + u.id + '_yunwu" placeholder="' + (u.yunwuMasked || '未配置') + '" style="width: 100%; max-width: 240px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px;"></td>' +
+              '<td style="padding: 12px;"><button type="button" onclick="saveUserApiKeys(' + u.id + ')" style="padding: 6px 14px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer;">保存</button></td>' +
+              '</tr>';
+          }).join('') + '</tbody></table>';
+      } catch (e) {
+        listEl.innerHTML = '<p style="color: var(--danger);">网络错误: ' + (e.message || '') + '</p>';
+      }
+    }
+
+    async function saveDefaultApiKeys() {
+      const heygen = document.getElementById('defaultHeyGen').value.trim();
+      const yunwu = document.getElementById('defaultYunwu').value.trim();
+      const body = { type: 'default' };
+      if (heygen) body.heygen = heygen;
+      if (yunwu) body.yunwu = yunwu;
+      try {
+        const res = await fetch('/api/admin/api-keys', { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(body) });
+        const data = await res.json();
+        alert(data.success ? '保存成功' : (data.message || '保存失败'));
+        if (data.success) loadApiKeysConfig();
+      } catch (e) {
+        alert('请求失败: ' + (e.message || ''));
+      }
+    }
+
+    async function loadWalletPage() {
+      const usersEl = document.getElementById('wallet-users-list');
+      const recordsEl = document.getElementById('wallet-records-list');
+      if (usersEl) usersEl.textContent = '加载中...';
+      if (recordsEl) recordsEl.textContent = '加载中...';
+      try {
+        const [pricingRes, usersRes, recordsRes] = await Promise.all([
+          fetch('/api/admin/wallet/pricing', { headers: getAuthHeaders() }),
+          fetch('/api/admin/wallet/users', { headers: getAuthHeaders() }),
+          fetch('/api/admin/wallet/records?limit=200', { headers: getAuthHeaders() })
+        ]);
+        var pricingData = pricingRes.ok ? await pricingRes.json() : {};
+        if (pricingData.success && pricingData.pricing) {
+          var p = pricingData.pricing;
+          ['yunwu_recite', 'yunwu_content_video', 'yunwu_promote', 'yunwu_digital_human', 'yunwu_image',
+            'yunwu_image2video', 'yunwu_text2video', 'yunwu_lipsync', 'yunwu_multi_image2image', 'yunwu_multi_image2video',
+            'yunwu_text2audio', 'yunwu_tts', 'yunwu_video2audio'].forEach(function(k) {
+            var el = document.getElementById('pricing_' + k);
+            if (el) el.value = p[k] != null ? p[k] : '';
+          });
+        }
+        const usersData = usersRes.ok ? await usersRes.json() : {};
+        const recordsData = recordsRes.ok ? await recordsRes.json() : {};
+        const users = usersData.users || [];
+        const records = recordsData.records || [];
+        if (usersEl) {
+          if (!usersData.success) {
+            usersEl.innerHTML = '<p style="color: var(--danger);">' + (usersData.message || '加载失败') + '</p>';
+          } else if (users.length === 0) {
+            usersEl.innerHTML = '<p style="color: var(--text-secondary);">暂无用户</p>';
+          } else {
+            usersEl.innerHTML = '<table style="width: 100%; border-collapse: collapse;">' +
+              '<thead><tr style="border-bottom: 1px solid var(--border-color);">' +
+              '<th style="text-align: left; padding: 12px;">用户ID</th><th style="text-align: left; padding: 12px;">用户名</th><th style="text-align: left; padding: 12px;">角色</th>' +
+              '<th style="text-align: right; padding: 12px;">余额</th><th style="text-align: right; padding: 12px;">历史消耗</th>' +
+              '<th style="padding: 12px;">操作</th></tr></thead><tbody>' +
+              users.map(function(u) {
+                return '<tr style="border-bottom: 1px solid var(--border-color);">' +
+                  '<td style="padding: 12px;">' + (u.id || '') + '</td>' +
+                  '<td style="padding: 12px;">' + (u.username || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>' +
+                  '<td style="padding: 12px;">' + (u.role || 'user') + '</td>' +
+                  '<td style="padding: 12px; text-align: right;">⚡ ' + (Number(u.balance) || 0).toFixed(2) + '</td>' +
+                  '<td style="padding: 12px; text-align: right;">⚡ ' + (Number(u.consumed) || 0).toFixed(2) + '</td>' +
+                  '<td style="padding: 12px;">' +
+                  '<button type="button" onclick="grantBalance(' + u.id + ', 100)" style="margin-right: 8px; padding: 6px 12px; background: var(--success); color: white; border: none; border-radius: 4px; cursor: pointer;">赠送 100 余额</button>' +
+                  '<button type="button" onclick="grantBalancePrompt(' + u.id + ')" style="padding: 6px 12px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer;">自定义赠送</button>' +
+                  '</td></tr>';
+              }).join('') + '</tbody></table>';
+          }
+        }
+        if (recordsEl) {
+          if (!recordsData.success) {
+            recordsEl.innerHTML = '<p style="color: var(--danger);">' + (recordsData.message || '加载失败') + '</p>';
+          } else if (records.length === 0) {
+            recordsEl.innerHTML = '<p style="color: var(--text-secondary);">暂无记录</p>';
+          } else {
+            function fmtTime(s) {
+              if (!s) return '-';
+              var d = new Date(s);
+              return isNaN(d.getTime()) ? s : d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+            recordsEl.innerHTML = '<table style="width: 100%; min-width: 640px; border-collapse: collapse;">' +
+              '<thead><tr style="border-bottom: 1px solid var(--border-color);">' +
+              '<th style="text-align: left; padding: 10px;">时间</th><th style="text-align: left; padding: 10px;">用户</th><th style="text-align: left; padding: 10px;">类型</th>' +
+              '<th style="text-align: right; padding: 10px;">金额</th><th style="text-align: right; padding: 10px;">变动后余额</th><th style="text-align: left; padding: 10px;">说明</th></tr></thead><tbody>' +
+              records.map(function(r) {
+                var typeLabel = r.type === 'recharge' ? '充值' : '扣款';
+                var typeClass = r.type === 'recharge' ? 'color: var(--success);' : 'color: var(--danger);';
+                var amountStr = (r.type === 'recharge' ? '+' : '-') + ' ⚡ ' + (Math.abs(r.amount) || 0).toFixed(2);
+                return '<tr style="border-bottom: 1px solid var(--border-color);">' +
+                  '<td style="padding: 10px;">' + fmtTime(r.created_at) + '</td>' +
+                  '<td style="padding: 10px;">' + (r.username || 'ID:' + r.user_id).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>' +
+                  '<td style="padding: 10px; ' + typeClass + '">' + typeLabel + '</td>' +
+                  '<td style="padding: 10px; text-align: right;">' + amountStr + '</td>' +
+                  '<td style="padding: 10px; text-align: right;">' + (r.balance_after != null ? '⚡ ' + r.balance_after.toFixed(2) : '-') + '</td>' +
+                  '<td style="padding: 10px;">' + (r.description || '-').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td></tr>';
+              }).join('') + '</tbody></table>';
+          }
+        }
+      } catch (e) {
+        if (usersEl) usersEl.innerHTML = '<p style="color: var(--danger);">网络错误: ' + (e.message || '') + '</p>';
+        if (recordsEl) recordsEl.innerHTML = '<p style="color: var(--danger);">网络错误: ' + (e.message || '') + '</p>';
+      }
+    }
+
+    async function grantBalance(userId, amount) {
+      if (!userId || !amount || amount <= 0) return;
+      try {
+        var res = await fetch('/api/admin/wallet/grant', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ userId: userId, amount: amount }) });
+        var data = await res.json();
+        alert(data.success ? '已赠送 ⚡ ' + amount + ' 余额' : (data.message || '赠送失败'));
+        if (data.success) loadWalletPage();
+      } catch (e) {
+        alert('请求失败: ' + (e.message || ''));
+      }
+    }
+
+    function grantBalancePrompt(userId) {
+      var amt = prompt('请输入赠送金额（数字，如 100）', '100');
+      if (amt === null) return;
+      var n = parseFloat(amt);
+      if (isNaN(n) || n <= 0) {
+        alert('请输入大于 0 的数字');
+        return;
+      }
+      grantBalance(userId, n);
+    }
+
+    async function saveWalletPricing() {
+      var pricing = {
+        yunwu_recite: parseFloat(document.getElementById('pricing_yunwu_recite').value) || 1,
+        yunwu_content_video: parseFloat(document.getElementById('pricing_yunwu_content_video').value) || 1,
+        yunwu_promote: parseFloat(document.getElementById('pricing_yunwu_promote').value) || 1,
+        yunwu_digital_human: parseFloat(document.getElementById('pricing_yunwu_digital_human').value) || 1,
+        yunwu_image: parseFloat(document.getElementById('pricing_yunwu_image').value) || 0.5,
+        yunwu_image2video: parseFloat(document.getElementById('pricing_yunwu_image2video').value) || 1,
+        yunwu_text2video: parseFloat(document.getElementById('pricing_yunwu_text2video').value) || 1,
+        yunwu_lipsync: parseFloat(document.getElementById('pricing_yunwu_lipsync').value) || 1,
+        yunwu_multi_image2image: parseFloat(document.getElementById('pricing_yunwu_multi_image2image').value) || 0.5,
+        yunwu_multi_image2video: parseFloat(document.getElementById('pricing_yunwu_multi_image2video').value) || 1,
+        yunwu_text2audio: parseFloat(document.getElementById('pricing_yunwu_text2audio').value) || 0.5,
+        yunwu_tts: parseFloat(document.getElementById('pricing_yunwu_tts').value) || 0.5,
+        yunwu_video2audio: parseFloat(document.getElementById('pricing_yunwu_video2audio').value) || 0.5
+      };
+      try {
+        var res = await fetch('/api/admin/wallet/pricing', { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ pricing: pricing }) });
+        var data = await res.json();
+        alert(data.success ? '扣款单价已保存' : (data.message || '保存失败'));
+      } catch (e) {
+        alert('请求失败: ' + (e.message || ''));
+      }
+    }
+
+    async function saveUserApiKeys(userId) {
+      const heygen = (document.getElementById('u' + userId + '_heygen') || {}).value.trim();
+      const yunwu = (document.getElementById('u' + userId + '_yunwu') || {}).value.trim();
+      const body = { type: 'user', userId: userId };
+      if (heygen) body.heygen = heygen;
+      if (yunwu) body.yunwu = yunwu;
+      try {
+        const res = await fetch('/api/admin/api-keys', { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(body) });
+        const data = await res.json();
+        alert(data.success ? '保存成功' : (data.message || '保存失败'));
+        if (data.success) loadApiKeysConfig();
+      } catch (e) {
+        alert('请求失败: ' + (e.message || ''));
+      }
     }
 
     // 切换子菜单
@@ -718,6 +1086,7 @@
     // 退出登录
     function logout() {
       sessionStorage.removeItem('user');
+      sessionStorage.removeItem('token');
       window.location.href = '/';
     }
   </script>

@@ -27,6 +27,10 @@
       --glass-border: rgba(255, 255, 255, 0.2);
     }
 
+    html, body {
+      height: 100%;
+    }
+
     body {
       font-family: 'Noto Sans SC', sans-serif;
       min-height: 100vh;
@@ -35,7 +39,16 @@
       justify-content: center;
       background: linear-gradient(135deg, #001529 0%, #002140 50%, #003a70 100%);
       position: relative;
-      overflow: hidden;
+      overflow-y: auto;          /* 支持整体滚动 */
+      overflow-x: hidden;
+      scrollbar-width: none;     /* Firefox 隐藏滚动条 */
+      -ms-overflow-style: none;  /* IE/Edge 隐藏滚动条 */
+    }
+
+    body::-webkit-scrollbar {
+      display: none;             /* Chrome/Safari/Opera 隐藏滚动条 */
+      width: 0;
+      height: 0;
     }
 
     /* 动态背景效果 */
@@ -692,11 +705,19 @@
         if (data.success) {
           showMessage('登录成功！正在跳转...', 'success');
           sessionStorage.setItem('user', JSON.stringify(data.user));
+          if (data.token) sessionStorage.setItem('token', data.token);
           setTimeout(() => {
             if (currentRole === 'admin') {
               window.location.href = '/admin.html';
             } else {
-              window.location.href = '/dashboard.html';
+              // 支持从数字人等页面刷新后登录回到原页面（避免跳到国际版或 dashboard）
+              const params = new URLSearchParams(window.location.search);
+              const returnUrl = params.get('returnUrl');
+              if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+                window.location.href = returnUrl;
+              } else {
+                window.location.href = '/dashboard.html';
+              }
             }
           }, 1000);
         } else {

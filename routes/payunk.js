@@ -137,8 +137,13 @@ function handleCallback(req, res) {
   if (!outTradeNo || !theirSign) {
     return res.status(400).send('bad request');
   }
+  if (!PAYUNK_KEY) {
+    console.error('[Payunk] PAYUNK_KEY not configured, cannot verify callback signature');
+    return res.status(503).send('service unavailable');
+  }
   const sign = makeSign(body, PAYUNK_KEY, true);
   if (sign !== theirSign) {
+    console.error('[Payunk] Callback signature mismatch. Expected:', sign, 'Got:', theirSign);
     return res.status(400).send('sign error');
   }
   if (callbacks !== 'CODE_SUCCESS') {
@@ -163,7 +168,7 @@ function handleCallback(req, res) {
  */
 async function queryOrder(req, res) {
   if (!PAYUNK_APPID || !PAYUNK_KEY) {
-    return res.status(503).json({ success: false, message: '支付未配置' });
+    return res.status(503).json({ success: false, message: '支付未配置（PAYUNK_APPID/PAYUNK_KEY）' });
   }
   const outTradeNo = req.body && req.body.out_trade_no;
   if (!outTradeNo) {

@@ -82,7 +82,14 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
           body: JSON.stringify({ amount: amount.toFixed(2), pay_type: payType })
         })
-          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            if (!r.ok && r.status === 503) {
+              return r.json().then(function (d) {
+                throw new Error(d && d.message ? d.message : '支付服务未配置，请联系管理员');
+              });
+            }
+            return r.json();
+          })
           .then(function (d) {
             if (d && d.success && d.url) {
               window.location.href = d.url;

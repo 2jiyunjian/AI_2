@@ -4553,6 +4553,10 @@
         </div>
         <div class="wallet-section-title">选择充值金额 (Select Recharge Amount)</div>
         <div class="wallet-amount-grid" id="walletAmountGrid">${amountCardsHtml}</div>
+        <div id="walletCustomAmountWrap" style="display: none; margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 500;">自定义金额（元）</label>
+          <input type="number" id="walletCustomAmount" min="0.01" step="0.01" placeholder="请输入金额" style="max-width: 200px; padding: 8px 12px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 6px;">
+        </div>
         <div class="wallet-summary" id="walletSummary">
           <div class="wallet-summary-row">
             <span class="wallet-summary-label">充值数量 (Recharge Quantity)</span>
@@ -4562,10 +4566,7 @@
             <span class="wallet-summary-label">实付金额 (Actual Payment)</span>
             <span class="wallet-summary-value" id="walletSummaryPay">100.00 元</span>
           </div>
-          <a href="/recharge.html">
-            <button type="button" class="wallet-submit-btn">确认充值</button>
-          </a>
-          
+          <button type="button" class="wallet-submit-btn" id="walletConfirmBtn">确认充值</button>
         </div>
         <div class="wallet-records">
           <div class="wallet-records-title">充值与扣款记录</div>
@@ -4586,26 +4587,52 @@
         </div>
       `;
       selectWalletAmount(100);
+      var gridEl = document.getElementById('walletAmountGrid');
+      var customWrap = document.getElementById('walletCustomAmountWrap');
+      var customInput = document.getElementById('walletCustomAmount');
       document.querySelectorAll('.wallet-type-tab').forEach(btn => {
         btn.addEventListener('click', function() {
           document.querySelectorAll('.wallet-type-tab').forEach(b => b.classList.remove('active'));
           this.classList.add('active');
+          var isCustom = this.getAttribute('data-type') === 'custom';
+          if (gridEl) gridEl.style.display = isCustom ? 'none' : '';
+          if (customWrap) customWrap.style.display = isCustom ? 'block' : 'none';
+          if (isCustom && customInput) {
+            var v = parseFloat(customInput.value);
+            if (!isNaN(v) && v > 0) { window._walletSelectedAmount = v; updateWalletSummary(v); }
+          }
         });
       });
+      if (customInput) {
+        customInput.addEventListener('input', function() {
+          var v = parseFloat(this.value);
+          if (!isNaN(v) && v > 0) { window._walletSelectedAmount = v; updateWalletSummary(v); }
+        });
+      }
+      document.getElementById('walletConfirmBtn').addEventListener('click', function() {
+        var activeTab = document.querySelector('.wallet-type-tab.active');
+        var isCustom = activeTab && activeTab.getAttribute('data-type') === 'custom';
+        var amt = window._walletSelectedAmount;
+        if (isCustom && customInput) {
+          var v = parseFloat(customInput.value);
+          if (!isNaN(v) && v > 0) amt = v;
+        }
+        amt = (amt != null && !isNaN(amt) && amt > 0) ? amt : 100;
+        window.location.href = '/recharge.html?amount=' + encodeURIComponent(amt);
+      });
+    }
+    function updateWalletSummary(amount) {
+      var qtyEl = document.getElementById('walletSummaryQty');
+      var payEl = document.getElementById('walletSummaryPay');
+      if (qtyEl) qtyEl.textContent = '⚡ ' + (Number(amount)).toFixed(2);
+      if (payEl) payEl.textContent = (Number(amount)).toFixed(2) + ' 元';
     }
     function selectWalletAmount(amount) {
       document.querySelectorAll('.wallet-amount-card').forEach(el => {
         el.classList.toggle('selected', parseInt(el.dataset.amount, 10) === amount);
       });
-      const qtyEl = document.getElementById('walletSummaryQty');
-      const payEl = document.getElementById('walletSummaryPay');
-      if (qtyEl) qtyEl.textContent = '⚡ ' + amount.toFixed(2);
-      if (payEl) payEl.textContent = amount.toFixed(2) + ' 元';
       window._walletSelectedAmount = amount;
-    }
-    function submitWalletRecharge() {
-      const amount = window._walletSelectedAmount || 100;
-      alert('充值功能需对接支付接口。当前选择：⚡ ' + amount.toLocaleString());
+      updateWalletSummary(amount);
     }
 
     // 渲染AI模型选择页面

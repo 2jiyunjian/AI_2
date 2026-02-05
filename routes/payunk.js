@@ -79,12 +79,11 @@ async function createOrder(req, res) {
   if (!deployUrl) {
     return res.status(500).json({ success: false, message: '请配置 DEPLOY_URL 或 CALLBACK_URL 作为支付回调根地址' });
   }
+  const outTradeNo = generateOutTradeNo();
+  const amountStr = amount.toFixed(2);
   const callbackUrl = deployUrl + '/api/payunk/callback';
   const successUrl = (req.body && req.body.success_url) || (deployUrl + '/recharge.html?success=1&out_trade_no=' + encodeURIComponent(outTradeNo));
   const errorUrl = (req.body && req.body.error_url) || deployUrl + '/recharge.html?error=1';
-
-  const outTradeNo = generateOutTradeNo();
-  const amountStr = amount.toFixed(2);
   const extend = JSON.stringify({ user_id: userId });
 
   const params = {

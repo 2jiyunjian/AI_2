@@ -80,7 +80,7 @@ async function createOrder(req, res) {
     return res.status(500).json({ success: false, message: '请配置 DEPLOY_URL 或 CALLBACK_URL 作为支付回调根地址' });
   }
   const callbackUrl = deployUrl + '/api/payunk/callback';
-  const successUrl = (req.body && req.body.success_url) || deployUrl + '/recharge.html?success=1';
+  const successUrl = (req.body && req.body.success_url) || (deployUrl + '/recharge.html?success=1&out_trade_no=' + encodeURIComponent(outTradeNo));
   const errorUrl = (req.body && req.body.error_url) || deployUrl + '/recharge.html?error=1';
 
   const outTradeNo = generateOutTradeNo();
@@ -135,7 +135,10 @@ function handleCallback(req, res) {
   const amountStr = body.amount;
   const theirSign = body.sign;
 
+  console.log('[Payunk] Callback received:', { callbacks, out_trade_no: outTradeNo, amount: amountStr });
+
   if (!outTradeNo || !theirSign) {
+    console.warn('[Payunk] Callback missing out_trade_no or sign');
     return res.status(400).send('bad request');
   }
   if (!PAYUNK_KEY) {
@@ -148,16 +151,27 @@ function handleCallback(req, res) {
     return res.status(400).send('sign error');
   }
   if (callbacks !== 'CODE_SUCCESS') {
+    console.log('[Payunk] Callback status not success:', callbacks);
     return res.send('success');
   }
   const pending = findAndConsumePending(outTradeNo);
   if (!pending) {
+    console.warn('[Payunk] Callback success but pending order not found:', outTradeNo);
     return res.send('success');
   }
-  const amount = parseFloat(amountStr);
-  if (isNaN(amount) || amount <= 0) amount = parseFloat(pending.amount);
-  if (amount > 0) {
-    addBalance(pending.userId, amount, '畅联支付充值-' + outTradeNo);
+  let amount = parseFloat(amountStr);
+  if (isNaN(amount) || amount <= 0) {
+    amount = parseFloat(pending.amount);
+  }
+  if (isNaN(amount) || amount <= 0) {
+    console.error('[Payunk] Invalid amount in callback:', amountStr, 'pending:', pending.amount);
+    return res.send('success');
+  }
+  const newBalance = addBalance(pending.userId, amount, '畅联支付充值-' + outTradeNo);
+  if (newBalance != null) {
+    console.log('[Payunk] Recharge success:', { outTradeNo, userId: pending.userId, amount, newBalance });
+  } else {
+    console.error('[Payunk] addBalance failed:', { outTradeNo, userId: pending.userId, amount });
   }
   return res.send('success');
 }
@@ -197,9 +211,67 @@ async function queryOrder(req, res) {
   }
 }
 
+/**
+ * 支付成功页补登：用户跳转回 success 页时调用，若回调未到则根据订单状态补加余额并返回最新余额
+ * GET /api/payunk/confirm?out_trade_no=xxx  需登录
+ */
+async function confirmRecharge(req, res) {
+  const userId = req.user && req.user.id;
+  if (!userId) {
+    return res.status(401).json({ success: false, message: '请先登录' });
+  }
+  const outTradeNo = (req.query && req.query.out_trade_no) || (req.body && req.body.out_trade_no);
+  if (!outTradeNo) {
+    return res.status(400).json({ success: false, message: '请传入 out_trade_no' });
+  }
+  if (!PAYUNK_APPID || !PAYUNK_KEY) {
+    return res.status(503).json({ success: false, message: '支付未配置' });
+  }
+
+  const params = { appid: PAYUNK_APPID, out_trade_no: outTradeNo };
+  params.sign = makeSign(params, PAYUNK_KEY, false);
+  const url = PAYUNK_BASE + '/index/getorder';
+  let orderData;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(params).toString(),
+    });
+    const text = await response.text();
+    const data = JSON.parse(text || '{}');
+    if (data.code !== 200 || !data.data) {
+      return res.json({ success: false, message: data.msg || '查询订单失败' });
+    }
+    orderData = data.data;
+  } catch (err) {
+    return res.status(502).json({ success: false, message: err.message || '请求失败' });
+  }
+
+  const status = orderData.status;
+  if (status !== 4) {
+    return res.json({ success: false, message: '订单未支付或处理中', status });
+  }
+
+  const pending = findAndConsumePending(outTradeNo);
+  if (pending) {
+    const amount = parseFloat(orderData.amount || pending.amount);
+    if (!isNaN(amount) && amount > 0 && pending.userId === userId) {
+      addBalance(userId, amount, '畅联支付充值(补登)-' + outTradeNo);
+      console.log('[Payunk] Confirm recharge (callback missed):', { outTradeNo, userId, amount });
+    }
+  }
+
+  const { getWallet } = require('../db');
+  const wallet = getWallet(userId);
+  const balance = wallet ? wallet.balance : 0;
+  return res.json({ success: true, balance, message: '充值已到账' });
+}
+
 module.exports = {
   createOrder,
   handleCallback,
   queryOrder,
+  confirmRecharge,
   makeSign,
 };

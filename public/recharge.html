@@ -46,6 +46,12 @@
         window.location.href = '/';
         return;
       }
+      function parseJsonRes(r) {
+        return r.text().then(function (text) {
+          if (!text || !text.trim()) return {};
+          try { return JSON.parse(text); } catch (e) { return {}; }
+        });
+      }
       var params = new URLSearchParams(window.location.search);
       var isSuccess = params.get('success') === '1';
       var isError = params.get('error') === '1';
@@ -66,20 +72,20 @@
 
       if (isSuccess && outTradeNo) {
         fetch('/api/payunk/confirm?out_trade_no=' + encodeURIComponent(outTradeNo), { headers: { 'Authorization': 'Bearer ' + token } })
-          .then(function (r) { return r.json(); })
+          .then(parseJsonRes)
           .then(function (d) {
             if (d && d.success && d.balance != null) {
               updateBalance(d);
             } else {
-              fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } }).then(function (r) { return r.json(); }).then(updateBalance);
+              fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } }).then(parseJsonRes).then(updateBalance);
             }
           })
           .catch(function () {
-            fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } }).then(function (r) { return r.json(); }).then(updateBalance);
+            fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } }).then(parseJsonRes).then(updateBalance);
           });
       } else {
         fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } })
-          .then(function (r) { return r.json(); })
+          .then(parseJsonRes)
           .then(updateBalance)
           .catch(function () {
             document.getElementById('balance').textContent = '0.00';
@@ -103,12 +109,12 @@
           body: JSON.stringify({ amount: amount.toFixed(2) })
         })
           .then(function (r) {
-            if (!r.ok && r.status === 503) {
-              return r.json().then(function (d) {
+            return parseJsonRes(r).then(function (d) {
+              if (!r.ok && r.status === 503) {
                 throw new Error(d && d.message ? d.message : '支付服务未配置，请联系管理员');
-              });
-            }
-            return r.json();
+              }
+              return d;
+            });
           })
           .then(function (d) {
             if (d && d.success && d.url) {

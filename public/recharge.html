@@ -47,22 +47,45 @@
         return;
       }
       var params = new URLSearchParams(window.location.search);
-      if (params.get('success') === '1') {
-        document.getElementById('msg').innerHTML = '<div class="msg success">充值成功，余额已更新</div>';
-        document.getElementById('msg').scrollIntoView();
-      }
-      if (params.get('error') === '1') {
+      var isSuccess = params.get('success') === '1';
+      var isError = params.get('error') === '1';
+      var outTradeNo = params.get('out_trade_no');
+      if (isError) {
         document.getElementById('msg').innerHTML = '<div class="msg error">支付失败或已取消</div>';
       }
 
-      fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var el = document.getElementById('balance');
-          if (d && d.balance != null) el.textContent = (Number(d.balance)).toFixed(2);
-          else el.textContent = '0.00';
-        })
-        .catch(function () { document.getElementById('balance').textContent = '0.00'; });
+      function updateBalance(d) {
+        var el = document.getElementById('balance');
+        var balance = (d && d.balance != null) ? (Number(d.balance)).toFixed(2) : '0.00';
+        el.textContent = balance;
+        if (isSuccess) {
+          document.getElementById('msg').innerHTML = '<div class="msg success">充值成功，当前余额已更新为 <strong>' + balance + ' ⚡</strong></div>';
+          document.getElementById('msg').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+
+      if (isSuccess && outTradeNo) {
+        fetch('/api/payunk/confirm?out_trade_no=' + encodeURIComponent(outTradeNo), { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d && d.success && d.balance != null) {
+              updateBalance(d);
+            } else {
+              fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } }).then(function (r) { return r.json(); }).then(updateBalance);
+            }
+          })
+          .catch(function () {
+            fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } }).then(function (r) { return r.json(); }).then(updateBalance);
+          });
+      } else {
+        fetch('/api/wallet', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(function (r) { return r.json(); })
+          .then(updateBalance)
+          .catch(function () {
+            document.getElementById('balance').textContent = '0.00';
+            if (isSuccess) document.getElementById('msg').innerHTML = '<div class="msg success">充值成功，余额已更新（若未显示最新余额请刷新页面）</div>';
+          });
+      }
 
       document.getElementById('form').addEventListener('submit', function (e) {
         e.preventDefault();

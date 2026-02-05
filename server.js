@@ -60,6 +60,7 @@ app.post('/api/works/:key', (req, res) => {
 
 // 畅联支付（payunk）：回调必须为公开 POST，不校验登录
 app.post('/api/payunk/callback', (req, res) => payunk.handleCallback(req, res));
+app.get('/api/payunk/confirm', authRouter.requireAuth, (req, res) => payunk.confirmRecharge(req, res));
 app.post('/api/payunk/create', authRouter.requireAuth, (req, res) => payunk.createOrder(req, res));
 app.post('/api/payunk/query', authRouter.requireAuth, (req, res) => payunk.queryOrder(req, res));
 

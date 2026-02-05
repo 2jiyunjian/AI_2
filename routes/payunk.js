@@ -7,6 +7,7 @@ const { getWorksStore, setWorksStore, addBalance } = require('../db');
 
 const PAYUNK_APPID = process.env.PAYUNK_APPID || '';
 const PAYUNK_KEY = process.env.PAYUNK_KEY || '';
+const PAYUNK_PAY_TYPE = process.env.PAYUNK_PAY_TYPE || 'alipayPrecreate';
 const PAYUNK_BASE = 'https://api2.payunk.com';
 
 const PENDING_ORDERS_KEY = 'payunk_pending_orders';
@@ -58,7 +59,8 @@ function generateOutTradeNo() {
 /**
  * 创建支付订单（统一下单）
  * POST /api/payunk/create
- * body: { amount, pay_type?, success_url?, error_url? }
+ * body: { amount, success_url?, error_url? }
+ * pay_type 仅使用环境变量 PAYUNK_PAY_TYPE（固定为 alipayPrecreate，不支持其他通道）
  * 需登录；返回 { success, url, out_trade_no, message }
  */
 async function createOrder(req, res) {
@@ -73,7 +75,6 @@ async function createOrder(req, res) {
   if (isNaN(amount) || amount <= 0) {
     return res.status(400).json({ success: false, message: '请传入有效金额 amount（元），保留两位小数' });
   }
-  const payType = (req.body && req.body.pay_type) || 'wechat';
   const deployUrl = (process.env.DEPLOY_URL || process.env.CALLBACK_URL || '').replace(/\/+$/, '');
   if (!deployUrl) {
     return res.status(500).json({ success: false, message: '请配置 DEPLOY_URL 或 CALLBACK_URL 作为支付回调根地址' });
@@ -88,7 +89,7 @@ async function createOrder(req, res) {
 
   const params = {
     appid: PAYUNK_APPID,
-    pay_type: payType,
+    pay_type: PAYUNK_PAY_TYPE,
     amount: amountStr,
     callback_url: callbackUrl,
     success_url: successUrl,

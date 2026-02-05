@@ -54,6 +54,14 @@
       var isSuccess = params.get('success') === '1';
       var isError = params.get('error') === '1';
       var outTradeNo = params.get('out_trade_no');
+      var amountParam = params.get('amount');
+      var amountInput = document.getElementById('amount');
+      if (amountParam) {
+        var a = parseFloat(amountParam);
+        if (!isNaN(a) && a >= 0.01) {
+          if (amountInput) amountInput.value = a.toFixed(2);
+        }
+      }
       if (isError) {
         document.getElementById('msg').innerHTML = '<div class="msg error">支付失败或已取消</div>';
       }
